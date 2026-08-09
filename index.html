@@ -1,113 +1,213 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>書類承認状況 報告フォーム</title>
-    <script src="https://static.worksmobile.net/static/wm/woff/edge/3.0/sdk.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 15px; background: #f4f5f7; }
-        .card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-        .title { font-weight: bold; border-left: 4px solid #00c73c; padding-left: 8px; margin-bottom: 8px; }
-        .checkbox-label { display: inline-block; margin: 4px; padding: 6px 12px; background: #eee; border-radius: 16px; font-size: 13px; }
-        .btn { width: 100%; padding: 12px; background: #00c73c; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin-top: 10px; cursor: pointer; }
-        #error-log { color: red; background: #ffebee; padding: 10px; border-radius: 4px; display: none; margin-top: 10px; font-size: 12px; white-space: pre-wrap; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>書類承認状況報告</title>
+  <!-- LINE WORKS WOFF SDK -->
+  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      font-size: 1.2rem;
+      margin-top: 0;
+      border-bottom: 2px solid #00c73c;
+      padding-bottom: 8px;
+      color: #00c73c;
+    }
+    .info-box {
+      background: #eef9f1;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-submit {
+      width: 100%;
+      background-color: #00c73c;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .btn-submit:active {
+      background-color: #009d30;
+    }
+    #loading {
+      text-align: center;
+      padding: 40px 0;
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
 </head>
 <body>
 
-    <h2>📄 書類承認状況 報告</h2>
-    <div id="loading">組織情報を読み込み中...</div>
-    <div id="error-log"></div>
+  <div class="container">
+    <h2>書類承認状況報告</h2>
+
+    <div id="loading">データ読み込み中...</div>
 
     <div id="form-area" style="display: none;">
-        <div class="card">
-            <div class="title">チーム情報</div>
-            <p>対象チーム: <strong id="team-name">-</strong></p>
-            <p>報告者: <strong id="reporter-name">-</strong></p>
-        </div>
+      <div class="info-box">
+        報告者: <strong><span id="reporter-name">-</span></strong><br>
+        チーム: <strong><span id="team-name">-</span></strong>
+      </div>
 
-        <div class="card">
-            <div class="title">対象メンバー選択</div>
-            <div id="member-list"></div>
-        </div>
+      <div class="section-title">■ 機能組織（Web部分）- TL未承認メンバー</div>
+      <div id="group-web-tl" class="checkbox-group"></div>
 
-        <button class="btn" onclick="sendReport()">報告メッセージを送信</button>
+      <div class="section-title">■ 楽楽精算（PJ組織交通費精算）- PL未承認メンバー</div>
+      <div id="group-pj-trans" class="checkbox-group"></div>
+
+      <button class="btn-submit" onclick="sendReport()">報告メッセージを送信</button>
     </div>
+  </div>
 
-    <script>
-        const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
-        const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec'; // ご自身のGASデプロイURL
+  <script>
+    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-        window.onload = async () => {
-            const errorLog = document.getElementById('error-log');
-            try {
-                // 1. WOFF 初期化
-                await woff.init({ woffId: WOFF_ID });
+    let currentUser = null;
+    let currentTeam = '';
 
-                // 2. ログインチェック
-                if (!woff.isLoggedIn()) {
-                    woff.login();
-                    return;
-                }
+    document.addEventListener('DOMContentLoaded', () => {
+      // WOFF初期化
+      woff.init({ woffId: WOFF_ID })
+        .then(() => {
+          // LINE WORKS アプリ内での起動時はログイン状態が保たれるため直接 getProfile を呼ぶ
+          return woff.getProfile();
+        })
+        .then((profile) => {
+          if (!profile) {
+            throw new Error('ユーザー情報の取得に失敗しました');
+          }
+          currentUser = profile;
+          document.getElementById('reporter-name').innerText = profile.displayName || '不明';
 
-                // 3. ユーザープロファイル取得
-                const profile = await woff.getProfile();
-                document.getElementById('reporter-name').innerText = profile.displayName || profile.userId;
+          // GAS APIを呼び出してログインユーザーのチームとメンバーを取得
+          return fetch(`${GAS_API_URL}?userId=${profile.userId}`);
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
 
-                // 4. GAS経由で組織・メンバー取得
-                const res = await fetch(`${GAS_API_URL}?userId=${profile.userId}`);
-                const data = await res.json();
+          currentTeam = data.teamName || '未設定';
+          document.getElementById('team-name').innerText = currentTeam;
 
-                if (data.error) {
-                    throw new Error('GASエラー: ' + data.error);
-                }
+          // メンバーのチェックボックスを動的レンダリング
+          renderMembers('group-web-tl', data.members || []);
+          renderMembers('group-pj-trans', data.members || []);
 
-                document.getElementById('team-name').innerText = data.teamName;
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('form-area').style.display = 'block';
+        })
+        .catch(err => {
+          console.error('WOFF Init Error:', err);
+          document.getElementById('loading').innerText = '初期化エラーが発生しました: ' + (err.message || JSON.stringify(err));
+          alert('初期化エラー: ' + (err.message || JSON.stringify(err)));
+        });
+    });
 
-                // メンバーリスト作成
-                const memberContainer = document.getElementById('member-list');
-                memberContainer.innerHTML = '';
-                (data.members || []).forEach((member, index) => {
-                    const label = document.createElement('label');
-                    label.className = 'checkbox-label';
-                    label.innerHTML = `<input type="checkbox" value="${member}"> ${member}`;
-                    memberContainer.appendChild(label);
-                });
+    function renderMembers(elementId, members) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = '';
+      if (members.length === 0) {
+        container.innerHTML = '<span style="font-size:0.85rem; color:#888;">該当メンバーなし</span>';
+        return;
+      }
+      members.forEach(m => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
+        container.appendChild(label);
+      });
+    }
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('form-area').style.display = 'block';
+    function getCheckedValues(elementId) {
+      const cbs = document.querySelectorAll(`#${elementId} input:checked`);
+      const vals = Array.from(cbs).map(cb => cb.value);
+      return vals.length > 0 ? vals.join('、') : 'なし';
+    }
 
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                errorLog.style.display = 'block';
-                errorLog.innerText = 'エラーが発生しました:\n' + err.message;
-            }
-        };
+    function sendReport() {
+      const now = new Date();
+      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const webTl = getCheckedValues('group-web-tl');
+      const pjTrans = getCheckedValues('group-pj-trans');
 
-        async function sendReport() {
-            const checkedBoxes = document.querySelectorAll('#member-list input[type="checkbox"]:checked');
-            const selectedMembers = Array.from(checkedBoxes).map(cb => cb.value);
+      const message = `@○○課長
+お疲れ様です。
+${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 
-            if (selectedMembers.length === 0) {
-                alert('メンバーを1人以上選択してください。');
-                return;
-            }
+■機能組織（Web部分）
+・すべてTL承認済み
+ ${webTl}
 
-            const teamName = document.getElementById('team-name').innerText;
-            const reporter = document.getElementById('reporter-name').innerText;
+■楽楽精算
+○PJ組織交通費精算
+・PL承認待ち
+ ${pjTrans}
 
-            const text = `【書類承認状況 報告】\n対象チーム: ${teamName}\n報告者: ${reporter}\n\n■ 承認完了メンバー\n・${selectedMembers.join('\n・')}`;
+以上です。
+（報告者: ${currentUser ? currentUser.displayName : '不明'}）`;
 
-            try {
-                await woff.sendCustomMessage({
-                    message: { type: 'text', text: text }
-                });
-                woff.closeWindow();
-            } catch (err) {
-                alert('メッセージ送信エラー: ' + err.message);
-            }
-        }
-    </script>
+      // LINE WORKS WOFFの正しいメッセージ送信 API（sendMessage）
+      woff.sendMessage({
+        messages: [
+          {
+            type: 'text',
+            text: message
+          }
+        ]
+      })
+      .then(() => {
+        // 送信完了後に画面を閉じる
+        woff.closeWindow();
+      })
+      .catch(err => {
+        console.error('WOFF Send Error:', err);
+        alert('送信エラー: ' + (err.message || JSON.stringify(err)));
+      });
+    }
+  </script>
 </body>
 </html>
