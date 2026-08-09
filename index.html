@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>書類承認状況 報告フォーム</title>
+  <script src="https://static.worksmobile.net/static/wm/woff/edge/3.0/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 15px; background: #f4f5f7; }
+    .card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+    .title { font-weight: bold; border-left: 4px solid #00c73c; padding-left: 8px; margin-bottom: 8px; }
+    .checkbox-label { display: inline-block; margin: 4px; padding: 6px 12px; background: #eee; border-radius: 16px; font-size: 13px; }
+    .btn { width: 100%; padding: 12px; background: #00c73c; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>📄 書類承認状況 報告</h2>
+  <div id="loading">組織情報を読み込み中...</div>
+
+  <div id="form-area" style="display: none;">
+    <div class="card">
+      <div class="title">チーム情報</div>
+      <p>対象チーム: <strong id="team-name">-</strong></p>
+      <p>報告者: <strong id="reporter-name">-</strong></p>
+    </div>
+
+    <div class="card">
+      <div class="title">■ 機能組織（Web部分）- TL承認済み</div>
+      <div id="group-web-tl"></div>
+    </div>
+
+    <div class="card">
+      <div class="title">■ 楽楽精算 - PJ組織交通費（PL承認待ち）</div>
+      <div id="group-pj-trans"></div>
+    </div>
+
+    <button class="btn" onclick="sendReport()">報告メッセージを送信</button>
+  </div>
+
+  <script>
+    const WOFF_ID = 'YOUR_WOFF_ID';
+    const GAS_API_URL = 'YOUR_GAS_WEB_APP_URL'; // Step 2で発行したURL
+
+    let currentUser = null;
+    let currentTeam = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      woff.init({ woffId: WOFF_ID })
+        .then(() => {
+          if (!woff.isLoggedIn()) {
+            woff.login();
+            return;
+          }
+          return woff.getProfile();
+        })
+        .then((profile) => {
+          if (!profile) return;
+          currentUser = profile;
+          document.getElementById('reporter-name').innerText = profile.displayName;
+
+          // GAS APIを呼び出して、ログインユーザーのチームとメンバーを取得
+          return fetch(`${GAS_API_URL}?userId=${profile.userId}`);
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+
+          currentTeam = data.teamName;
+          document.getElementById('team-name').innerText = currentTeam;
+
+          // メンバーのチェックボックスを動的レンダリング
+          renderMembers('group-web-tl', data.members);
+          renderMembers('group-pj-trans', data.members);
+
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('form-area').style.display = 'block';
+        })
+        .catch(err => {
+          alert('初期化エラー: ' + err.message);
+        });
+    });
+
+    function renderMembers(elementId, members) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = '';
+      members.forEach(m => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
+        container.appendChild(label);
+      });
+    }
+
+    function getCheckedValues(elementId) {
+      const cbs = document.querySelectorAll(`#${elementId} input:checked`);
+      const vals = Array.from(cbs).map(cb => cb.value);
+      return vals.length > 0 ? vals.join('、') : 'なし';
+    }
+
+    function sendReport() {
+      const now = new Date();
+      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+      const webTl = getCheckedValues('group-web-tl');
+      const pjTrans = getCheckedValues('group-pj-trans');
+
+      const message = `@○○課長
+お疲れ様です。
+${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
+
+■機能組織（Web部分）
+・すべてTL承認済み
+ ${webTl}
+
+■楽楽精算
+○PJ組織交通費精算
+・PL承認待ち
+ ${pjTrans}
+
+以上です。
+（報告者: ${currentUser.displayName}）`;
+
+      woff.sendProcess({ message: message })
+        .then(() => woff.closeWindow())
+        .catch(err => alert('送信エラー: ' + err.message));
+    }
+  </script>
+</body>
+</html>
