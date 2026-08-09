@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
-  <!-- LINE WORKS WOFF SDK を head 先頭で読み込み -->
+  <!-- LINE WORKS WOFF SDK -->
   <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
   <style>
     body {
@@ -119,27 +119,34 @@
 
     // WOFFの初期化とデータ取得関数
     function initWoffApp() {
-      if (typeof woff === 'undefined') {
-        showError('WOFF SDKのロードに失敗しました。');
-        return;
+      // WOFF SDKが認識できる場合は初期化を実行
+      if (typeof woff !== 'undefined' && woff.init) {
+        woff.init({ woffId: WOFF_ID })
+          .then(() => {
+            if (woff.isLoggedIn && !woff.isLoggedIn()) {
+              return { userId: 'default_user', displayName: '利用メンバー' };
+            }
+            return woff.getProfile();
+          })
+          .then(profile => loadFormData(profile))
+          .catch(err => {
+            console.warn('WOFF初期化スキップ:', err);
+            // SDK初期化失敗時も画面表示へフォールバック
+            loadFormData({ userId: 'default_user', displayName: '利用メンバー' });
+          });
+      } else {
+        // SDKが利用できない（通常ブラウザ表示）場合もフォームを表示
+        console.warn('WOFF SDK未検出のためフォールバックモードで起動します');
+        loadFormData({ userId: 'default_user', displayName: '利用メンバー' });
       }
+    }
 
-      woff.init({ woffId: WOFF_ID })
-        .then(() => {
-          // 直接URL起動等で未ログインの場合のフォールバック
-          if (woff.isLoggedIn && !woff.isLoggedIn()) {
-            return { userId: 'default_user', displayName: '利用メンバー' };
-          }
-          return woff.getProfile();
-        })
-        .then((profile) => {
-          if (!profile) throw new Error('ユーザー情報の取得に失敗しました');
-          currentUser = profile;
-          document.getElementById('reporter-name').innerText = profile.displayName || '不明';
+    // GAS API経由でデータを取得して画面に描画する
+    function loadFormData(profile) {
+      currentUser = profile || { userId: 'default_user', displayName: '利用メンバー' };
+      document.getElementById('reporter-name').innerText = currentUser.displayName || '不明';
 
-          // GAS APIの呼び出し
-          return fetch(`${GAS_API_URL}?userId=${profile.userId}`);
-        })
+      fetch(`${GAS_API_URL}?userId=${currentUser.userId}`)
         .then(res => {
           if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
           return res.json();
@@ -161,7 +168,6 @@
         });
     }
 
-    // ページロード完了後に初期化関数を実行
     window.addEventListener('load', initWoffApp);
 
     function renderMembers(elementId, members) {
@@ -208,21 +214,20 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 以上です。
 （報告者: ${currentUser ? currentUser.displayName : '不明'}）`;
 
-      woff.sendMessage({
-        messages: [
-          {
-            type: 'text',
-            text: message
-          }
-        ]
-      })
-      .then(() => {
-        woff.closeWindow();
-      })
-      .catch(err => {
-        console.error('WOFF Send Error:', err);
-        alert('送信エラー: ' + (err.message || JSON.stringify(err)));
-      });
+      // WOFF APIが使える場合はメッセージ自動送信、使えない場合はクリップボードコピー
+      if (typeof woff !== 'undefined' && woff.sendMessage) {
+        woff.sendMessage({
+          messages: [{ type: 'text', text: message }]
+        })
+        .then(() => woff.closeWindow())
+        .catch(err => {
+          alert('送信エラー: ' + (err.message || JSON.stringify(err)));
+        });
+      } else {
+        navigator.clipboard.writeText(message)
+          .then(() => alert('メッセージをクリップボードにコピーしました！トーク画面に貼り付けて送信してください。'))
+          .catch(() => alert('送信テキスト:\n\n' + message));
+      }
     }
   </script>
 </body>
