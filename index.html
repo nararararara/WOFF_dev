@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
-  <!-- LINE WORKS WOFF SDK -->
-  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -70,6 +68,10 @@
     .btn-submit:active {
       background-color: #009d30;
     }
+    .btn-submit:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
     #loading {
       text-align: center;
       padding: 40px 0;
@@ -97,15 +99,19 @@
       <div class="section-title">■ 楽楽精算（PJ組織交通費精算）- PL未承認メンバー</div>
       <div id="group-pj-trans" class="checkbox-group"></div>
 
-      <button class="btn-submit" onclick="sendReport()">報告メッセージを送信</button>
+      <button id="submit-btn" class="btn-submit" onclick="sendReport()">報告メッセージを送信</button>
     </div>
   </div>
 
   <script>
-    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-    let currentUser = null;
+    // URLパラメータから userId と channelId を取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId') || 'default_user';
+    const channelId = urlParams.get('channelId') || '';
+
+    let currentUser = { userId: userId, displayName: '利用メンバー' };
     let currentTeam = '';
 
     function showError(msg) {
@@ -117,36 +123,9 @@
       console.error(msg);
     }
 
-    // WOFFの初期化とデータ取得関数
-    function initWoffApp() {
-      // WOFF SDKが認識できる場合は初期化を実行
-      if (typeof woff !== 'undefined' && woff.init) {
-        woff.init({ woffId: WOFF_ID })
-          .then(() => {
-            if (woff.isLoggedIn && !woff.isLoggedIn()) {
-              return { userId: 'default_user', displayName: '利用メンバー' };
-            }
-            return woff.getProfile();
-          })
-          .then(profile => loadFormData(profile))
-          .catch(err => {
-            console.warn('WOFF初期化スキップ:', err);
-            // SDK初期化失敗時も画面表示へフォールバック
-            loadFormData({ userId: 'default_user', displayName: '利用メンバー' });
-          });
-      } else {
-        // SDKが利用できない（通常ブラウザ表示）場合もフォームを表示
-        console.warn('WOFF SDK未検出のためフォールバックモードで起動します');
-        loadFormData({ userId: 'default_user', displayName: '利用メンバー' });
-      }
-    }
-
-    // GAS API経由でデータを取得して画面に描画する
-    function loadFormData(profile) {
-      currentUser = profile || { userId: 'default_user', displayName: '利用メンバー' };
-      document.getElementById('reporter-name').innerText = currentUser.displayName || '不明';
-
-      fetch(`${GAS_API_URL}?userId=${currentUser.userId}`)
+    // 初期データ取得
+    function initApp() {
+      fetch(`${GAS_API_URL}?userId=${encodeURIComponent(userId)}`)
         .then(res => {
           if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
           return res.json();
@@ -156,6 +135,7 @@
 
           currentTeam = data.teamName || '未設定';
           document.getElementById('team-name').innerText = currentTeam;
+          document.getElementById('reporter-name').innerText = currentUser.displayName;
 
           renderMembers('group-web-tl', data.members || []);
           renderMembers('group-pj-trans', data.members || []);
@@ -168,7 +148,7 @@
         });
     }
 
-    window.addEventListener('load', initWoffApp);
+    window.addEventListener('load', initApp);
 
     function renderMembers(elementId, members) {
       const container = document.getElementById(elementId);
@@ -192,6 +172,10 @@
     }
 
     function sendReport() {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerText = '送信中...';
+
       const now = new Date();
       const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       
@@ -203,7 +187,7 @@
 ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 
 ■機能組織（Web部分）
-・すべてTL承認済み
+・TL未承認メンバー
  ${webTl}
 
 ■楽楽精算
@@ -211,23 +195,32 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 ・PL承認待ち
  ${pjTrans}
 
-以上です。
-（報告者: ${currentUser ? currentUser.displayName : '不明'}）`;
+以上です。`;
 
-      // WOFF APIが使える場合はメッセージ自動送信、使えない場合はクリップボードコピー
-      if (typeof woff !== 'undefined' && woff.sendMessage) {
-        woff.sendMessage({
-          messages: [{ type: 'text', text: message }]
+      // GAS の doPost へデータ送信
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' }, // CORS回避のため text/plain で送信
+        body: JSON.stringify({
+          message: message,
+          userId: userId,
+          channelId: channelId
         })
-        .then(() => woff.closeWindow())
-        .catch(err => {
-          alert('送信エラー: ' + (err.message || JSON.stringify(err)));
-        });
-      } else {
-        navigator.clipboard.writeText(message)
-          .then(() => alert('メッセージをクリップボードにコピーしました！トーク画面に貼り付けて送信してください。'))
-          .catch(() => alert('送信テキスト:\n\n' + message));
-      }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          alert('報告メッセージを送信しました。この画面を閉じてください。');
+          btn.innerText = '送信完了';
+        } else {
+          throw new Error(data.message || '送信に失敗しました');
+        }
+      })
+      .catch(err => {
+        alert('送信エラー: ' + err.message);
+        btn.disabled = false;
+        btn.innerText = '報告メッセージを送信';
+      });
     }
   </script>
 </body>
