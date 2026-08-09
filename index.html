@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
+  <!-- LINE WORKS WOFF SDK -->
+  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -104,14 +106,19 @@
   </div>
 
   <script>
+    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-    // URLパラメータから userId と channelId を取得
+    // URLパラメータから予備の userId / channelId を取得
     const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('userId') || 'default_user';
-    const channelId = urlParams.get('channelId') || '';
+    let targetUserId = urlParams.get('userId') || '';
+    let targetChannelId = urlParams.get('channelId') || '';
 
-    let currentUser = { userId: userId, displayName: '利用メンバー' };
+    // {user_id} などの文字列が入っている場合は空にリセット
+    if (targetUserId.includes('{')) targetUserId = '';
+    if (targetChannelId.includes('{')) targetChannelId = '';
+
+    let currentUser = { userId: targetUserId, displayName: '利用メンバー' };
     let currentTeam = '';
 
     function showError(msg) {
@@ -123,9 +130,35 @@
       console.error(msg);
     }
 
-    // 初期データ取得
+    // アプリ初期化処理（WOFF からの Context 取得を試みる）
     function initApp() {
-      fetch(`${GAS_API_URL}?userId=${encodeURIComponent(userId)}`)
+      if (typeof woff !== 'undefined' && woff.init) {
+        woff.init({ woffId: WOFF_ID })
+          .then(() => {
+            // Context（開いているトーク画面等の情報）を取得
+            return woff.getContext();
+          })
+          .then(context => {
+            if (context) {
+              if (context.userId) targetUserId = context.userId;
+              if (context.channelId) targetChannelId = context.channelId;
+            }
+            return loadFormData();
+          })
+          .catch(err => {
+            console.warn('WOFF Init Fail/Skip:', err);
+            loadFormData();
+          });
+      } else {
+        loadFormData();
+      }
+    }
+
+    // GAS API経由で所属チームとメンバーを取得
+    function loadFormData() {
+      const reqUserId = targetUserId || 'default_user';
+
+      fetch(`${GAS_API_URL}?userId=${encodeURIComponent(reqUserId)}`)
         .then(res => {
           if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
           return res.json();
@@ -135,6 +168,8 @@
 
           currentTeam = data.teamName || '未設定';
           document.getElementById('team-name').innerText = currentTeam;
+          
+          // ユーザー名が取れていれば表示（無ければ仮名）
           document.getElementById('reporter-name').innerText = currentUser.displayName;
 
           renderMembers('group-web-tl', data.members || []);
@@ -197,14 +232,14 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 
 以上です。`;
 
-      // GAS の doPost へデータ送信
+      // GAS の doPost へ送信
       fetch(GAS_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' }, // CORS回避のため text/plain で送信
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           message: message,
-          userId: userId,
-          channelId: channelId
+          userId: targetUserId,
+          channelId: targetChannelId
         })
       })
       .then(res => res.json())
@@ -212,6 +247,9 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
         if (data.status === 'success') {
           alert('報告メッセージを送信しました。この画面を閉じてください。');
           btn.innerText = '送信完了';
+          if (typeof woff !== 'undefined' && woff.closeWindow) {
+            woff.closeWindow();
+          }
         } else {
           throw new Error(data.message || '送信に失敗しました');
         }
