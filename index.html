@@ -109,16 +109,19 @@
     const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-    // URLパラメータから予備の userId / channelId を取得
+    // 取得できた宛先情報を保持する変数
+    let targetUserId = '';
+    let targetChannelId = '';
+
+    // URLクエリからの取得を試みる（手動テスト用パラメータ）
     const urlParams = new URLSearchParams(window.location.search);
-    let targetUserId = urlParams.get('userId') || '';
-    let targetChannelId = urlParams.get('channelId') || '';
+    const paramUser = urlParams.get('userId');
+    const paramChannel = urlParams.get('channelId');
 
-    // {user_id} などの文字列が入っている場合は空にリセット
-    if (targetUserId.includes('{')) targetUserId = '';
-    if (targetChannelId.includes('{')) targetChannelId = '';
+    if (paramUser && !paramUser.includes('{')) targetUserId = paramUser;
+    if (paramChannel && !paramChannel.includes('{')) targetChannelId = paramChannel;
 
-    let currentUser = { userId: targetUserId, displayName: '利用メンバー' };
+    let currentUser = { userId: '', displayName: '利用メンバー' };
     let currentTeam = '';
 
     function showError(msg) {
@@ -130,23 +133,39 @@
       console.error(msg);
     }
 
-    // アプリ初期化処理（WOFF からの Context 取得を試みる）
+    // 初期化処理
     function initApp() {
       if (typeof woff !== 'undefined' && woff.init) {
         woff.init({ woffId: WOFF_ID })
           .then(() => {
-            // Context（開いているトーク画面等の情報）を取得
-            return woff.getContext();
+            // ① WOFF Profile からユーザー情報取得を試みる
+            if (woff.isLoggedIn && woff.isLoggedIn()) {
+              return woff.getProfile().catch(() => null);
+            }
+            return null;
+          })
+          .then(profile => {
+            if (profile && profile.userId) {
+              targetUserId = profile.userId;
+              currentUser.displayName = profile.displayName || profile.userId;
+            }
+            // ② WOFF Context からトークルーム/ユーザー情報取得を試みる
+            if (woff.getContext) {
+              return woff.getContext().catch(() => null);
+            }
+            return null;
           })
           .then(context => {
             if (context) {
+              // 構造の揺れをカバーしてIDを抽出
               if (context.userId) targetUserId = context.userId;
               if (context.channelId) targetChannelId = context.channelId;
+              if (context.chatId) targetChannelId = context.chatId; // chatId 名義で入ってくる場合への対応
             }
-            return loadFormData();
+            loadFormData();
           })
           .catch(err => {
-            console.warn('WOFF Init Fail/Skip:', err);
+            console.warn('WOFF初期化警告:', err);
             loadFormData();
           });
       } else {
@@ -168,8 +187,6 @@
 
           currentTeam = data.teamName || '未設定';
           document.getElementById('team-name').innerText = currentTeam;
-          
-          // ユーザー名が取れていれば表示（無ければ仮名）
           document.getElementById('reporter-name').innerText = currentUser.displayName;
 
           renderMembers('group-web-tl', data.members || []);
@@ -207,6 +224,12 @@
     }
 
     function sendReport() {
+      // 送信先がどちらも取れていない場合は送信処理手前で弾く
+      if (!targetUserId && !targetChannelId) {
+        alert('送信先の判定に失敗しました。LINE WORKS アプリのトーク画面から開き直してください。');
+        return;
+      }
+
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
       btn.innerText = '送信中...';
