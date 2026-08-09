@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
-  <!-- LINE WORKS WOFF SDK -->
+  <!-- LINE WORKS WOFF SDK を head 先頭で読み込み -->
   <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
   <style>
     body {
@@ -108,31 +108,48 @@
     let currentUser = null;
     let currentTeam = '';
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // WOFF初期化
+    function showError(msg) {
+      const loadingEl = document.getElementById('loading');
+      if (loadingEl) {
+        loadingEl.style.color = 'red';
+        loadingEl.innerText = 'エラーが発生しました: ' + msg;
+      }
+      console.error(msg);
+    }
+
+    // WOFFの初期化とデータ取得関数
+    function initWoffApp() {
+      if (typeof woff === 'undefined') {
+        showError('WOFF SDKのロードに失敗しました。');
+        return;
+      }
+
       woff.init({ woffId: WOFF_ID })
         .then(() => {
-          // LINE WORKS アプリ内での起動時はログイン状態が保たれるため直接 getProfile を呼ぶ
+          // 直接URL起動等で未ログインの場合のフォールバック
+          if (woff.isLoggedIn && !woff.isLoggedIn()) {
+            return { userId: 'default_user', displayName: '利用メンバー' };
+          }
           return woff.getProfile();
         })
         .then((profile) => {
-          if (!profile) {
-            throw new Error('ユーザー情報の取得に失敗しました');
-          }
+          if (!profile) throw new Error('ユーザー情報の取得に失敗しました');
           currentUser = profile;
           document.getElementById('reporter-name').innerText = profile.displayName || '不明';
 
-          // GAS APIを呼び出してログインユーザーのチームとメンバーを取得
+          // GAS APIの呼び出し
           return fetch(`${GAS_API_URL}?userId=${profile.userId}`);
         })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
+          return res.json();
+        })
         .then(data => {
-          if (data.error) throw new Error(data.error);
+          if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
 
           currentTeam = data.teamName || '未設定';
           document.getElementById('team-name').innerText = currentTeam;
 
-          // メンバーのチェックボックスを動的レンダリング
           renderMembers('group-web-tl', data.members || []);
           renderMembers('group-pj-trans', data.members || []);
 
@@ -140,16 +157,17 @@
           document.getElementById('form-area').style.display = 'block';
         })
         .catch(err => {
-          console.error('WOFF Init Error:', err);
-          document.getElementById('loading').innerText = '初期化エラーが発生しました: ' + (err.message || JSON.stringify(err));
-          alert('初期化エラー: ' + (err.message || JSON.stringify(err)));
+          showError(err.message || JSON.stringify(err));
         });
-    });
+    }
+
+    // ページロード完了後に初期化関数を実行
+    window.addEventListener('load', initWoffApp);
 
     function renderMembers(elementId, members) {
       const container = document.getElementById(elementId);
       container.innerHTML = '';
-      if (members.length === 0) {
+      if (!members || members.length === 0) {
         container.innerHTML = '<span style="font-size:0.85rem; color:#888;">該当メンバーなし</span>';
         return;
       }
@@ -190,7 +208,6 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 以上です。
 （報告者: ${currentUser ? currentUser.displayName : '不明'}）`;
 
-      // LINE WORKS WOFFの正しいメッセージ送信 API（sendMessage）
       woff.sendMessage({
         messages: [
           {
@@ -200,7 +217,6 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
         ]
       })
       .then(() => {
-        // 送信完了後に画面を閉じる
         woff.closeWindow();
       })
       .catch(err => {
