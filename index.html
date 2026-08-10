@@ -123,7 +123,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
     
-      // 1. テスト用/直接指定用 (?userId=xxx)
+      // 1. テスト用/ブラウザ直指定用 (?userId=xxx)
       if (paramUserId) {
         targetUserId = paramUserId;
         currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
@@ -139,7 +139,7 @@
         // 2. WOFF SDK を初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // 3. ログイン済みであれば即座にプロファイルを取得してフォーム表示
+        // 3. ログイン済み（トークン保持状態）であればプロファイルを取得
         if (woff.isLoggedIn()) {
           const profile = await woff.getProfile();
           targetUserId = profile.userId;
@@ -147,19 +147,18 @@
           await loadFormData();
           return;
         }
-    
-        // 4. 未ログインの場合：woff.login() を呼び出して認証を完了させる
-        // (LINE WORKS 内のアプリ内ブラウザであれば、安全にログイン・プロファイル取得へ遷移します)
+
+        // 4. 未ログイン時のログイン試行（PC版アプリ・スマホアプリで自動ログイン処理へ流す）
+        // ※完全に認証コンテキストが取れない場合のみ catch に入るかエラー画面になります
         woff.login();
     
       } catch (err) {
         console.error('WOFF Main Error:', err);
-        // 万が一初期化失敗やエラーが起きた場合のみフォールバック案内を表示
         showWebFallbackUI();
       }
     }
     
-    // Web版ブラウザでアクセスされた際の案内画面（またはID指定を促す表示）
+    // Web版ブラウザ（完全な外部ブラウザ）でエラーになった場合の案内表示
     function showWebFallbackUI() {
       const loadingEl = document.getElementById('loading');
       if (loadingEl) {
