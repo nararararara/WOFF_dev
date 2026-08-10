@@ -144,36 +144,34 @@
           throw new Error('WOFF SDKの読み込みに失敗しました。');
         }
     
-        // 1. 初期化
-        console.log('WOFF Init開始:', WOFF_ID);
+        // 1. WOFF初期化
         await woff.init({ woffId: WOFF_ID });
-        console.log('WOFF Init成功');
     
+        // 2. クエリパラメータ指定（PC単体テスト等）があれば優先
         if (paramUserId) {
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
-        } else {
-          // ログイン状態ログ
-          console.log('isInClient:', woff.isInClient());
-          console.log('isLoggedIn:', woff.isLoggedIn());
-    
-          if (!woff.isLoggedIn()) {
-            console.log('未ログインのため woff.login() を実行します');
-            // 引数なしで実行して動作確認
-            woff.login();
-            return;
-          }
-    
-          const profile = await woff.getProfile();
-          console.log('取得したProfile:', profile);
-          targetUserId = profile.userId;
-          currentUserDisplayName = extractDisplayName(profile);
+          await loadFormData();
+          return;
         }
     
+        // 3. ログインチェック
+        if (!woff.isLoggedIn()) {
+          // 引数を渡さずに呼ぶことで、Consoleで設定した Endpoint URL / Redirect URL へ安全に飛ばします
+          woff.login();
+          return;
+        }
+    
+        // 4. 認証完了後のプロファイル取得
+        const profile = await woff.getProfile();
+        targetUserId = profile.userId;
+        currentUserDisplayName = extractDisplayName(profile);
+    
+        // 5. GASデータ読み込み
         await loadFormData();
     
       } catch (err) {
-        console.error('WOFF Error詳細:', err);
+        console.error('WOFF Error:', err);
         if (paramUserId) {
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
