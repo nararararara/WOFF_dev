@@ -154,10 +154,16 @@
       await fetchLeaders();
     }
 
-    // リーダー一覧の取得
+    // リーダー一覧の取得（修正版）
     async function fetchLeaders() {
       try {
-        const res = await fetch(GAS_API_URL);
+        // redirect: 'follow' を追加してリダイレクトを許可
+        const res = await fetch(GAS_API_URL, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         const data = await res.json();
         
         const selectEl = document.getElementById('leader-select');
@@ -172,11 +178,12 @@
           });
         }
       } catch (err) {
+        console.error('fetchLeaders Error:', err);
         alert('リーダー一覧の読み込みに失敗しました: ' + err.message);
       }
     }
 
-    // ドロップダウン選択時の処理
+    // ドロップダウン選択時の処理（修正版）
     async function onLeaderChange() {
       const selectEl = document.getElementById('leader-select');
       currentSelectedUserId = selectEl.value;
@@ -194,8 +201,12 @@
       formArea.style.display = 'none';
 
       try {
-        // 選択されたリーダーのデータ（未承認メンバー）を取得
-        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(currentSelectedUserId)}`);
+        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(currentSelectedUserId)}`, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         const data = await res.json();
 
         currentTeam = data.teamName || '未設定';
@@ -212,7 +223,7 @@
         alert('データの取得に失敗しました: ' + err.message);
       }
     }
-
+    
     function renderMembers(elementId, members) {
       const container = document.getElementById(elementId);
       container.innerHTML = '';
