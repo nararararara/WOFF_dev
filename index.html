@@ -139,7 +139,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
     
-      // 1. テスト用 URL パラメータ（?userId=xxx）がある場合
+      // 1. テスト用パラメータ指定（?userId=xxx）がある場合は即時スキップ
       if (paramUserId) {
         targetUserId = paramUserId;
         currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
@@ -147,34 +147,41 @@
         return;
       }
     
-      // 2. WOFF 初期化処理
+      // URL に OAuth の返却パラメータ (code / state) が含まれているか判定
+      const hasAuthParams = urlParams.has('code') && urlParams.has('state');
+    
       try {
         if (typeof woff === 'undefined') {
           throw new Error('WOFF SDKの読み込みに失敗しました。');
         }
     
-        // WOFF 初期化
+        // 2. WOFF 初期化
+        // URL に code/state がある場合、woff.init() の内部処理で自動的に認可コードが検証・ログイン完了処理されます
         await woff.init({ woffId: WOFF_ID });
     
-        // ログイン状態の確認
-        if (!woff.isLoggedIn()) {
-          // 未ログインなら LINE WORKS のログイン画面へリダイレクト
-          // (別タブで開いているため、Parameterエラーにならず正常にログイン画面が出ます)
+        // 3. ログイン状態チェック
+        if (woff.isLoggedIn()) {
+          // ログイン完了済みならプロファイルを取得してデータ読み込み
+          const profile = await woff.getProfile();
+          targetUserId = profile.userId;
+          currentUserDisplayName = extractDisplayName(profile);
+          await loadFormData();
+          return;
+        }
+    
+        // 4. 未ログイン かつ リダイレクト戻りでもない場合のみ、ログインを実行
+        if (!hasAuthParams) {
+          // woff.login() が走るとページがリダイレクトするため、ここで処理は中断されます
           woff.login();
           return;
         }
     
-        // ログイン済みならユーザー情報取得
-        const profile = await woff.getProfile();
-        targetUserId = profile.userId;
-        currentUserDisplayName = extractDisplayName(profile);
-    
-        // データ読み込み
-        await loadFormData();
+        // code/state があるのに isLoggedIn が false の場合は認証失敗
+        showError('認証に失敗しました。LINE WORKS アプリから再度お試しください。');
     
       } catch (err) {
         console.error('WOFF Error:', err);
-        showError('認証に失敗しました。ページを再読み込みするか、LINE WORKS アプリからご利用ください。');
+        showError('WOFF初期化エラー: ' + (err.message || JSON.stringify(err)));
       }
     }
     
