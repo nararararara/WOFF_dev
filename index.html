@@ -139,16 +139,15 @@
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
     
-      // --- 1. URLパラメータ指定がある場合（テスト・直接リンク用） ---
+      // 1. テスト用 URL パラメータ（?userId=xxx）がある場合
       if (paramUserId) {
-        console.log('URLパラメータからuserIdを取得:', paramUserId);
         targetUserId = paramUserId;
         currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
         await loadFormData();
         return;
       }
     
-      // --- 2. WOFF SDK による認証処理 ---
+      // 2. WOFF 初期化処理
       try {
         if (typeof woff === 'undefined') {
           throw new Error('WOFF SDKの読み込みに失敗しました。');
@@ -157,45 +156,25 @@
         // WOFF 初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // ログイン状態判定
-        if (woff.isLoggedIn()) {
-          // ログイン済みならプロファイルを取得
-          const profile = await woff.getProfile();
-          targetUserId = profile.userId;
-          currentUserDisplayName = extractDisplayName(profile);
-          await loadFormData();
+        // ログイン状態の確認
+        if (!woff.isLoggedIn()) {
+          // 未ログインなら LINE WORKS のログイン画面へリダイレクト
+          // (別タブで開いているため、Parameterエラーにならず正常にログイン画面が出ます)
+          woff.login();
           return;
         }
     
-        // --- 未ログインの場合（Web版LINE WORKSの固定メニューから開いた場合など） ---
-        // iframe内での自動リダイレクトエラーを避けるため、別ウィンドウでのログインを試行
-        if (window.self !== window.top) {
-          // iframe内で動いている場合
-          console.warn('iframe内での未ログイン状態を検知しました。');
-          
-          // ボタン等を表示して別タブで開かせるか、直接ログインを実行
-          document.body.innerHTML = `
-            <div style="padding: 20px; text-align: center; font-family: sans-serif;">
-              <p style="margin-bottom: 15px;">認証が必要です。下のボタンを押してログインしてください。</p>
-              <button id="manualLoginBtn" style="padding: 10px 20px; background-color: #00c73c; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-                LINE WORKSでログイン
-              </button>
-            </div>
-          `;
-          document.getElementById('manualLoginBtn').addEventListener('click', () => {
-            woff.login();
-          });
-          return;
-        }
+        // ログイン済みならユーザー情報取得
+        const profile = await woff.getProfile();
+        targetUserId = profile.userId;
+        currentUserDisplayName = extractDisplayName(profile);
     
-        // 通常のブラウザ表示で未ログインの場合
-        woff.login();
+        // データ読み込み
+        await loadFormData();
     
       } catch (err) {
-        console.error('WOFF Main Error:', err);
-        
-        // エラー発生時のフォールバック表示
-        showError('認証処理でエラーが発生しました。Web版LINE WORKSをお使いの場合は、一度ページを再読み込みするか、アプリ版からお試しください。');
+        console.error('WOFF Error:', err);
+        showError('認証に失敗しました。ページを再読み込みするか、LINE WORKS アプリからご利用ください。');
       }
     }
     
