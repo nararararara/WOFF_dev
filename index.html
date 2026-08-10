@@ -123,7 +123,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
     
-      // 1. テスト用/ブラウザ直指定用 (?userId=xxx) がある場合
+      // 1. テスト用/ブラウザ直指定用 (?userId=xxx)
       if (paramUserId) {
         targetUserId = paramUserId;
         currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
@@ -131,39 +131,35 @@
         return;
       }
     
-      // 2. 実行環境の判定（アプリ内か、PC/Webブラウザ等か）
-      // UserAgent に "Worksmobile" や "LINEWORKS" 等のアプリ識別子が含まれているかチェック
-      const isAppClient = /Worksmobile|LINEWORKS/i.test(navigator.userAgent);
-    
-      // Web版ブラウザ等で WOFF 認証を通すとエラー画面になるため、アプリ外アクセスは WOFF をスキップ
-      if (!isAppClient && !urlParams.has('code')) {
-        console.warn('Webブラウザ環境からのアクセスのため WOFF 認証をスキップします。');
-        showWebFallbackUI();
-        return;
-      }
-    
-      // 3. アプリ内（または OAuth 戻り時）のみ WOFF SDK を初期化
       try {
         if (typeof woff === 'undefined') {
           throw new Error('WOFF SDKが読み込まれていません。');
         }
     
-        // アプリ内であれば安全に初期化
+        // 2. WOFF SDK を初期化
         await woff.init({ woffId: WOFF_ID });
     
-        if (woff.isLoggedIn()) {
-          const profile = await woff.getProfile();
-          targetUserId = profile.userId;
-          currentUserDisplayName = extractDisplayName(profile);
-          await loadFormData();
+        // 3. アプリ内（PC版アプリ / スマホアプリ）で開かれているか判定
+        if (woff.isInClient()) {
+          // アプリ内の場合はログイン判定・プロファイル取得を実行
+          if (woff.isLoggedIn()) {
+            const profile = await woff.getProfile();
+            targetUserId = profile.userId;
+            currentUserDisplayName = extractDisplayName(profile);
+            await loadFormData();
+          } else {
+            // アプリ内で未ログインの場合
+            woff.login();
+          }
           return;
         }
     
-        // 未ログインかつアプリ内の場合のみログイン試行
-        woff.login();
+        // 4. アプリ外（Web版ブラウザ等）で開かれた場合は案内を表示してリダイレクトエラーを防止
+        console.warn('LINE WORKSアプリ外からのアクセスのため案内を表示します。');
+        showWebFallbackUI();
     
       } catch (err) {
-        console.error('WOFF Error:', err);
+        console.error('WOFF Main Error:', err);
         showWebFallbackUI();
       }
     }
