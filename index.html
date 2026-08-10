@@ -139,22 +139,20 @@
         // 2. WOFF SDK を初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // 3. アプリ内（PC版アプリ / スマホアプリ）で開かれているか判定
+        // 3. アプリ内（PC版アプリ / スマホアプリ）で開かれている場合
         if (woff.isInClient()) {
-          // アプリ内の場合はログイン判定・プロファイル取得を実行
           if (woff.isLoggedIn()) {
             const profile = await woff.getProfile();
             targetUserId = profile.userId;
             currentUserDisplayName = extractDisplayName(profile);
             await loadFormData();
           } else {
-            // アプリ内で未ログインの場合
             woff.login();
           }
           return;
         }
     
-        // 4. アプリ外（Web版ブラウザ等）で開かれた場合は案内を表示してリダイレクトエラーを防止
+        // 4. アプリ外（Web版ブラウザ等）で開かれた場合はリダイレクトエラーを防止
         console.warn('LINE WORKSアプリ外からのアクセスのため案内を表示します。');
         showWebFallbackUI();
     
