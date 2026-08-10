@@ -158,9 +158,11 @@
             return;
           }
 
-          // 通常のアプリ内判定・プロファイル取得
-          if (!woff.isLoggedIn()) {
-            woff.login();
+          // 外部ブラウザ（Edge等）かつ未ログイン時の処理
+          if (!woff.isInClient() && !woff.isLoggedIn()) {
+            // リダイレクトURIをクエリパラメータなしの完全なURLに統一
+            const currentUrl = window.location.href.split('?')[0];
+            woff.login({ redirectUri: currentUrl });
             return;
           }
 
