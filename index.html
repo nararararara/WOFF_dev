@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
-  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
+  
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -80,6 +80,9 @@
       color: #666;
     }
   </style>
+
+  <!-- SDK読み込み完了時に自動的に main() を起動させる -->
+  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js" onload="main()"></script>
 </head>
 <body>
 
@@ -121,123 +124,59 @@
       console.error(msg);
     }
 
-    // async function initApp() {
-    //   // WOFF SDK の初期化と Profile 取得
-    //   if (typeof woff !== 'undefined' && woff.init) {
-    //     try {
-    //       await woff.init({ woffId: WOFF_ID });
-
-    //       // 未ログイン時の自動ログイン処理
-    //       if (!woff.isLoggedIn()) {
-    //         woff.login();
-    //         return;
-    //       }
-
-    //       // 操作ユーザー（リーダー）の Profile 情報取得
-    //       const profile = await woff.getProfile();
-    //       if (profile && profile.userId) {
-    //         targetUserId = profile.userId;
-    //         currentUserDisplayName = profile.displayName || profile.userId;
-    //       } else {
-    //         throw new Error('ユーザー情報の取得に失敗しました');
-    //       }
-
-    //     } catch (e) {
-    //       console.error('WOFF Init Error:', e);
-    //       showError('WOFF初期化エラー: ' + (e.message || JSON.stringify(e)));
-    //       return;
-    //     }
-    //   } else {
-    //     showError('WOFF SDK を読み込めませんでした');
-    //     return;
-    //   }
-
-    //   // GAS からリーダーに応じたチーム情報・メンバー情報を取得
-    //   loadFormData();
-    // }
-
-
-
-    // woff オブジェクトがロードされるのを待つ関数
-    function waitForWoff(timeout = 5000) {
-      return new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        const interval = setInterval(() => {
-          if (typeof woff !== 'undefined' && woff.init) {
-            clearInterval(interval);
-            resolve();
-          } else if (Date.now() - startTime > timeout) {
-            clearInterval(interval);
-            reject(new Error('WOFF SDK の読み込みタイムアウト（スクリプトがロードされませんでした）'));
-          }
-        }, 100);
-      });
-    }
-    
-    async function initApp() {
+    // 公式サンプルの初期化ロジックを踏襲
+    async function main() {
       try {
-        // WOFF SDK が利用可能になるまで待機（最大5秒）
-        await waitForWoff();
-    
-        // WOFF SDK の初期化
+        // 1. WOFF SDK 初期化
         await woff.init({ woffId: WOFF_ID });
-    
-        // 未ログイン時の自動ログイン処理
+
+        // 2. ログインチェック
         if (!woff.isLoggedIn()) {
           woff.login();
           return;
         }
-    
-        // 操作ユーザー（リーダー）の Profile 情報取得
+
+        // 3. ユーザープロファイルの取得（公式サンプルと同じ呼び出し方）
         const profile = await woff.getProfile();
-        if (profile && profile.userId) {
-          targetUserId = profile.userId;
-          currentUserDisplayName = profile.displayName || profile.userId;
-        } else {
-          throw new Error('ユーザー情報の取得に失敗しました');
-        }
-    
-        // リーダーに応じたチーム情報・メンバー情報を取得
-        loadFormData();
-    
-      } catch (e) {
-        console.error('WOFF Init Error:', e);
-        showError('初期化エラー: ' + (e.message || JSON.stringify(e)));
+        targetUserId = profile.userId;
+        currentUserDisplayName = profile.displayName || profile.userId;
+
+        // 4. GASからリーダーごとの所属・メンバーを取得
+        await loadFormData();
+
+      } catch (err) {
+        console.error('WOFF Error:', err);
+        showError('WOFF処理エラー: ' + (err.message || JSON.stringify(err)));
       }
     }
 
-    
-
-    function loadFormData() {
+    async function loadFormData() {
       if (!targetUserId) {
-        showError('ユーザーIDが特定できませんでした');
+        showError('ユーザーIDが取得できませんでした');
         return;
       }
 
-      fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`)
-        .then(res => {
-          if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
-          return res.json();
-        })
-        .then(data => {
-          if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
+      try {
+        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`);
+        if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
+        
+        const data = await res.json();
+        if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
 
-          currentTeam = data.teamName || '未設定';
-          document.getElementById('team-name').innerText = currentTeam;
-          document.getElementById('reporter-name').innerText = currentUserDisplayName;
+        currentTeam = data.teamName || '未設定';
+        document.getElementById('team-name').innerText = currentTeam;
+        document.getElementById('reporter-name').innerText = currentUserDisplayName;
 
-          renderMembers('group-web-tl', data.members || []);
-          renderMembers('group-pj-trans', data.members || []);
+        renderMembers('group-web-tl', data.members || []);
+        renderMembers('group-pj-trans', data.members || []);
 
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('form-area').style.display = 'block';
-        })
-        .catch(err => {
-          showError(err.message || JSON.stringify(err));
-        });
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('form-area').style.display = 'block';
+
+      } catch (err) {
+        showError(err.message || JSON.stringify(err));
+      }
     }
-
-    window.addEventListener('load', initApp);
 
     function renderMembers(elementId, members) {
       const container = document.getElementById(elementId);
@@ -260,9 +199,9 @@
       return vals.length > 0 ? vals.join('、') : 'なし';
     }
 
-    function sendReport() {
+    async function sendReport() {
       if (!targetUserId) {
-        alert('ユーザーIDが取得できていません。アプリを開き直してください。');
+        alert('ユーザーIDが特定できていません');
         return;
       }
 
@@ -291,16 +230,17 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
 
 以上です。`;
 
-      fetch(GAS_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
-          message: message,
-          userId: targetUserId
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            message: message,
+            userId: targetUserId
+          })
+        });
+
+        const data = await res.json();
         if (data.status === 'success') {
           alert('報告メッセージを送信しました。この画面を閉じてください。');
           btn.innerText = '送信完了';
@@ -310,12 +250,11 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
         } else {
           throw new Error(data.message || '送信に失敗しました');
         }
-      })
-      .catch(err => {
+      } catch (err) {
         alert('送信エラー: ' + err.message);
         btn.disabled = false;
         btn.innerText = '報告メッセージを送信';
-      });
+      }
     }
   </script>
 </body>
