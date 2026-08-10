@@ -78,11 +78,11 @@
       padding: 40px 0;
       font-size: 0.9rem;
       color: #666;
+      word-break: break-all;
     }
   </style>
 
-  <!-- SDK読み込み完了時に自動的に main() を起動させる -->
-  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js" onload="main()"></script>
+  <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script>
 </head>
 <body>
 
@@ -119,40 +119,57 @@
       const loadingEl = document.getElementById('loading');
       if (loadingEl) {
         loadingEl.style.color = 'red';
-        loadingEl.innerText = 'エラーが発生しました: ' + msg;
+        loadingEl.innerText = 'エラーが発生しました:\n' + msg;
       }
       console.error(msg);
     }
 
-    // 公式サンプルの初期化ロジックを踏襲
     async function main() {
-      try {
-        // 1. WOFF SDK 初期化
-        await woff.init({ woffId: WOFF_ID });
+      // 1. URLクエリパラメータに ?userId= があれば優先取得（PCブラウザテスト用）
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramUserId = urlParams.get('userId');
 
-        // 2. ログインチェック
-        if (!woff.isLoggedIn()) {
-          woff.login();
-          return;
+      try {
+        if (typeof woff === 'undefined') {
+          throw new Error('WOFF SDKの読み込みに失敗しました。');
         }
 
-        // 3. ユーザープロファイルの取得（公式サンプルと同じ呼び出し方）
-        const profile = await woff.getProfile();
-        targetUserId = profile.userId;
-        currentUserDisplayName = profile.displayName || profile.userId;
+        // 2. WOFF初期化
+        await woff.init({ woffId: WOFF_ID });
 
-        // 4. GASからリーダーごとの所属・メンバーを取得
+        if (paramUserId) {
+          // クエリパラメータ指定がある場合
+          targetUserId = paramUserId;
+          currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
+        } else {
+          // 通常のWOFFフロー
+          if (!woff.isLoggedIn()) {
+            woff.login();
+            return;
+          }
+          const profile = await woff.getProfile();
+          targetUserId = profile.userId;
+          currentUserDisplayName = profile.displayName || profile.userId;
+        }
+
+        // 3. GASからデータ取得
         await loadFormData();
 
       } catch (err) {
-        console.error('WOFF Error:', err);
-        showError('WOFF処理エラー: ' + (err.message || JSON.stringify(err)));
+        // パラメータがあればWOFF初期化失敗でもフォールバック
+        if (paramUserId) {
+          targetUserId = paramUserId;
+          currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
+          await loadFormData();
+        } else {
+          showError(err.message || JSON.stringify(err));
+        }
       }
     }
 
     async function loadFormData() {
       if (!targetUserId) {
-        showError('ユーザーIDが取得できませんでした');
+        showError('ユーザーIDが特定できませんでした');
         return;
       }
 
@@ -215,20 +232,7 @@
       const webTl = getCheckedValues('group-web-tl');
       const pjTrans = getCheckedValues('group-pj-trans');
 
-      const message = `@○○課長
-お疲れ様です。
-${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
-
-■機能組織（Web部分）
-・TL未承認メンバー
- ${webTl}
-
-■楽楽精算
-○PJ組織交通費精算
-・PL承認待ち
- ${pjTrans}
-
-以上です。`;
+      const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
 
       try {
         const res = await fetch(GAS_API_URL, {
@@ -256,6 +260,8 @@ ${timeStr}時点での${currentTeam}の書類承認状況を連絡します。
         btn.innerText = '報告メッセージを送信';
       }
     }
+
+    window.addEventListener('DOMContentLoaded', main);
   </script>
 </body>
 </html>
