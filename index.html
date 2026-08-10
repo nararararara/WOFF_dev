@@ -82,15 +82,10 @@
     }
   </style>
 
-  <!-- <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script> -->
   <!-- WOFF SDK -->
   <script
     charset="utf-8"
     src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js">
-  </script>
-
-  <script>
-    console.log('SDK確認:', typeof woff);
   </script>
 </head>
 <body>
@@ -133,8 +128,14 @@
       console.error(msg);
     }
 
+    // ユーザープロファイル解析ヘルパー
+    function extractDisplayName(profile) {
+      const userName = profile.userName || {};
+      const fullName = `${userName.lastName || ''} ${userName.firstName || ''}`.trim();
+      return fullName || profile.displayName || profile.userId;
+    }
+
     async function main() {
-      // 1. URLクエリパラメータに ?userId= があれば優先取得（PCブラウザテスト用）
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
 
@@ -143,29 +144,37 @@
           throw new Error('WOFF SDKの読み込みに失敗しました。');
         }
 
-        // 2. WOFF初期化
+        // 1. WOFF初期化
         await woff.init({ woffId: WOFF_ID });
 
         if (paramUserId) {
-          // クエリパラメータ指定がある場合
+          // PCブラウザテスト等のパラメータ指定時
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
         } else {
-          // 通常のWOFFフロー
+          // 外部ブラウザ（Edge等）かつ未ログイン時の処理
+          if (!woff.isInClient() && !woff.isLoggedIn()) {
+            woff.login({ redirectUri: window.location.href });
+            return;
+          }
+
+          // 通常のアプリ内判定・プロファイル取得
           if (!woff.isLoggedIn()) {
             woff.login();
             return;
           }
+
           const profile = await woff.getProfile();
           targetUserId = profile.userId;
-          currentUserDisplayName = profile.displayName || profile.userId;
+          currentUserDisplayName = extractDisplayName(profile);
         }
 
-        // 3. GASからデータ取得
+        // 2. GASからフォームデータ取得
         await loadFormData();
 
       } catch (err) {
-        // パラメータがあればWOFF初期化失敗でもフォールバック
+        console.error('WOFF Error:', err);
+        // パラメータ指定があれば初期化失敗でもフォールバック実行
         if (paramUserId) {
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
@@ -270,58 +279,8 @@
       }
     }
 
+    // DOMロード完了時に実行
     window.addEventListener('DOMContentLoaded', main);
-  </script>
-
-  <script>
-    async function initialize() {
-      try {
-  
-        console.log('woff:', window.woff);
-  
-        if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDKの読み込みに失敗しました。');
-        }
-  
-        // WOFF初期化
-        await woff.init({
-          woffId: 'ここにWOFF ID'
-        });
-  
-        console.log('WOFF初期化成功');
-  
-        // PC版LINE WORKS → Edgeの場合は外部ブラウザ扱い
-        if (!woff.isInClient()) {
-          console.log('外部ブラウザで起動しています');
-  
-          // ログインしていなければログイン
-          if (!woff.isLoggedIn()) {
-            woff.login({
-              redirectUri: window.location.href
-            });
-            return;
-          }
-        }
-  
-        // ユーザー情報取得
-        const profile = await woff.getProfile();
-  
-        console.log('profile:', profile);
-  
-        document.getElementById('reporter-name').textContent =
-          profile.displayName;
-  
-      } catch (error) {
-  
-        console.error('WOFFエラー:', error);
-  
-        document.getElementById('loading').textContent =
-          'エラー: ' + error.message;
-      }
-    }
-  
-    // HTML読み込み後に実行
-    initialize();
   </script>
 </body>
 </html>
