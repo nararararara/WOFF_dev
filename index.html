@@ -112,197 +112,258 @@
   </div>
 
   <script>
-    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
+    // const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
+    // const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-    let targetUserId = '';
-    let currentUserDisplayName = '利用メンバー';
-    let currentTeam = '';
+    // let targetUserId = '';
+    // let currentUserDisplayName = '利用メンバー';
+    // let currentTeam = '';
 
-    function showError(msg) {
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) {
-        loadingEl.style.color = 'red';
-        loadingEl.innerText = 'エラーが発生しました:\n' + msg;
-      }
-      console.error(msg);
-    }
+    // function showError(msg) {
+    //   const loadingEl = document.getElementById('loading');
+    //   if (loadingEl) {
+    //     loadingEl.style.color = 'red';
+    //     loadingEl.innerText = 'エラーが発生しました:\n' + msg;
+    //   }
+    //   console.error(msg);
+    // }
 
-    // ユーザープロファイル解析ヘルパー
-    function extractDisplayName(profile) {
-      const userName = profile.userName || {};
-      const fullName = `${userName.lastName || ''} ${userName.firstName || ''}`.trim();
-      return fullName || profile.displayName || profile.userId;
-    }
+    // // ユーザープロファイル解析ヘルパー
+    // function extractDisplayName(profile) {
+    //   const userName = profile.userName || {};
+    //   const fullName = `${userName.lastName || ''} ${userName.firstName || ''}`.trim();
+    //   return fullName || profile.displayName || profile.userId;
+    // }
 
 
-    // --- デバッグ用関数の定義 ---
-    function debugWOFFState() {
-      const urlParams = new URLSearchParams(window.location.search);
+    // // --- デバッグ用関数の定義 ---
+    // function debugWOFFState() {
+    //   const urlParams = new URLSearchParams(window.location.search);
       
-      console.group('WOFF Debug Info');
-      console.log('URL:', window.location.href);
-      console.log('OAuth code:', urlParams.get('code') || 'なし');
-      console.log('OAuth state:', urlParams.get('state') || 'なし');
+    //   console.group('WOFF Debug Info');
+    //   console.log('URL:', window.location.href);
+    //   console.log('OAuth code:', urlParams.get('code') || 'なし');
+    //   console.log('OAuth state:', urlParams.get('state') || 'なし');
       
-      if (typeof woff !== 'undefined') {
-        console.log('isInClient:', woff.isInClient ? woff.isInClient() : '未定義');
-        console.log('isLoggedIn:', woff.isLoggedIn ? woff.isLoggedIn() : '未定義');
-        console.log('WOFF Version:', woff.getVersion ? woff.getVersion() : '未定義');
-      } else {
-        console.log('woff SDK: 未読み込み');
-      }
-      console.groupEnd();
-    }
+    //   if (typeof woff !== 'undefined') {
+    //     console.log('isInClient:', woff.isInClient ? woff.isInClient() : '未定義');
+    //     console.log('isLoggedIn:', woff.isLoggedIn ? woff.isLoggedIn() : '未定義');
+    //     console.log('WOFF Version:', woff.getVersion ? woff.getVersion() : '未定義');
+    //   } else {
+    //     console.log('woff SDK: 未読み込み');
+    //   }
+    //   console.groupEnd();
+    // }
 
     
+    // async function main() {
+    //   const urlParams = new URLSearchParams(window.location.search);
+    //   const paramUserId = urlParams.get('userId');
+    
+    //   // 1. テスト用パラメータ指定（?userId=xxx）がある場合は即時スキップ
+    //   if (paramUserId) {
+    //     targetUserId = paramUserId;
+    //     currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
+    //     await loadFormData();
+    //     return;
+    //   }
+    
+    //   // URL に OAuth の返却パラメータ (code / state) が含まれているか判定
+    //   const hasAuthParams = urlParams.has('code') && urlParams.has('state');
+    
+    //   try {
+    //     if (typeof woff === 'undefined') {
+    //       throw new Error('WOFF SDKの読み込みに失敗しました。');
+    //     }
+    
+    //     // 2. WOFF 初期化
+    //     // URL に code/state がある場合、woff.init() の内部処理で自動的に認可コードが検証・ログイン完了処理されます
+    //     await woff.init({ woffId: WOFF_ID });
+    //     debugWOFFState();
+    
+    //     // 3. ログイン状態チェック
+    //     if (woff.isLoggedIn()) {
+    //       // ログイン完了済みならプロファイルを取得してデータ読み込み
+    //       const profile = await woff.getProfile();
+    //       targetUserId = profile.userId;
+    //       currentUserDisplayName = extractDisplayName(profile);
+    //       await loadFormData();
+    //       return;
+    //     }
+    
+    //     // 4. 未ログイン かつ リダイレクト戻りでもない場合のみ、ログインを実行
+    //     if (!hasAuthParams) {
+    //       // woff.login() が走るとページがリダイレクトするため、ここで処理は中断されます
+    //       woff.login();
+    //       return;
+    //     }
+    
+    //     // code/state があるのに isLoggedIn が false の場合は認証失敗
+    //     showError('認証に失敗しました。LINE WORKS アプリから再度お試しください。');
+    
+    //   } catch (err) {
+    //     console.error('WOFF Error:', err);
+    //     showError('WOFF初期化エラー: ' + (err.message || JSON.stringify(err)));
+    //   }
+    // }
+    
+    // async function loadFormData() {
+    //   if (!targetUserId) {
+    //     showError('ユーザーIDが特定できませんでした');
+    //     return;
+    //   }
+
+    //   try {
+    //     const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`);
+    //     if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
+        
+    //     const data = await res.json();
+    //     if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
+
+    //     currentTeam = data.teamName || '未設定';
+    //     document.getElementById('team-name').innerText = currentTeam;
+    //     document.getElementById('reporter-name').innerText = currentUserDisplayName;
+
+    //     renderMembers('group-web-tl', data.members || []);
+    //     renderMembers('group-pj-trans', data.members || []);
+
+    //     document.getElementById('loading').style.display = 'none';
+    //     document.getElementById('form-area').style.display = 'block';
+
+    //   } catch (err) {
+    //     showError(err.message || JSON.stringify(err));
+    //   }
+    // }
+
+    // function renderMembers(elementId, members) {
+    //   const container = document.getElementById(elementId);
+    //   container.innerHTML = '';
+    //   if (!members || members.length === 0) {
+    //     container.innerHTML = '<span style="font-size:0.85rem; color:#888;">該当メンバーなし</span>';
+    //     return;
+    //   }
+    //   members.forEach(m => {
+    //     const label = document.createElement('label');
+    //     label.className = 'checkbox-label';
+    //     label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
+    //     container.appendChild(label);
+    //   });
+    // }
+
+    // function getCheckedValues(elementId) {
+    //   const cbs = document.querySelectorAll(`#${elementId} input:checked`);
+    //   const vals = Array.from(cbs).map(cb => cb.value);
+    //   return vals.length > 0 ? vals.join('、') : 'なし';
+    // }
+
+    // async function sendReport() {
+    //   if (!targetUserId) {
+    //     alert('ユーザーIDが特定できていません');
+    //     return;
+    //   }
+
+    //   const btn = document.getElementById('submit-btn');
+    //   btn.disabled = true;
+    //   btn.innerText = '送信中...';
+
+    //   const now = new Date();
+    //   const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      
+    //   const webTl = getCheckedValues('group-web-tl');
+    //   const pjTrans = getCheckedValues('group-pj-trans');
+
+    //   const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
+
+    //   try {
+    //     const res = await fetch(GAS_API_URL, {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'text/plain' },
+    //       body: JSON.stringify({
+    //         message: message,
+    //         userId: targetUserId
+    //       })
+    //     });
+
+    //     const data = await res.json();
+    //     if (data.status === 'success') {
+    //       alert('報告メッセージを送信しました。この画面を閉じてください。');
+    //       btn.innerText = '送信完了';
+    //       if (typeof woff !== 'undefined' && woff.closeWindow) {
+    //         woff.closeWindow();
+    //       }
+    //     } else {
+    //       throw new Error(data.message || '送信に失敗しました');
+    //     }
+    //   } catch (err) {
+    //     alert('送信エラー: ' + err.message);
+    //     btn.disabled = false;
+    //     btn.innerText = '報告メッセージを送信';
+    //   }
+    // }
+
+    // // DOMロード完了時に実行
+    // window.addEventListener('DOMContentLoaded', main);
+
+    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA'; // 書類承認状況報告のWOFF ID
+  
+    // コンソールおよび画面上にログを表示する関数
+    function logDebugInfo(title, data) {
+      console.group('🔍 ' + title);
+      console.log(data);
+      console.groupEnd();
+  
+      // 画面上にも結果を強制表示（コンソールが見えにくい場合用）
+      const logDiv = document.getElementById('debug-log') || document.createElement('div');
+      logDiv.id = 'debug-log';
+      logDiv.style.cssText = 'padding:15px; margin:10px; background:#f4f4f9; border:1px solid #ccc; font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all;';
+      logDiv.innerHTML += `<b>[${title}]</b>\n${JSON.stringify(data, null, 2)}\n\n`;
+      document.body.appendChild(logDiv);
+    }
+  
     async function main() {
       const urlParams = new URLSearchParams(window.location.search);
-      const paramUserId = urlParams.get('userId');
-    
-      // 1. テスト用パラメータ指定（?userId=xxx）がある場合は即時スキップ
-      if (paramUserId) {
-        targetUserId = paramUserId;
-        currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
-        await loadFormData();
-        return;
-      }
-    
-      // URL に OAuth の返却パラメータ (code / state) が含まれているか判定
-      const hasAuthParams = urlParams.has('code') && urlParams.has('state');
-    
+      
+      // 1. まずアクセス時の生URLとパラメータを記録
+      logDebugInfo('1. 起動時URLとパラメータ', {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        searchParams: Object.fromEntries(urlParams.entries())
+      });
+  
       try {
         if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDKの読み込みに失敗しました。');
+          throw new Error('WOFF SDK (sdk.js) が読み込まれていません');
         }
-    
-        // 2. WOFF 初期化
-        // URL に code/state がある場合、woff.init() の内部処理で自動的に認可コードが検証・ログイン完了処理されます
+  
+        // 2. woff.init 直前
+        logDebugInfo('2. WOFF Init 開始前', { woffId: WOFF_ID });
+  
+        // 3. WOFF 初期化実行
         await woff.init({ woffId: WOFF_ID });
-        debugWOFFState();
-    
-        // 3. ログイン状態チェック
-        if (woff.isLoggedIn()) {
-          // ログイン完了済みならプロファイルを取得してデータ読み込み
-          const profile = await woff.getProfile();
-          targetUserId = profile.userId;
-          currentUserDisplayName = extractDisplayName(profile);
-          await loadFormData();
-          return;
-        }
-    
-        // 4. 未ログイン かつ リダイレクト戻りでもない場合のみ、ログインを実行
-        if (!hasAuthParams) {
-          // woff.login() が走るとページがリダイレクトするため、ここで処理は中断されます
-          woff.login();
-          return;
-        }
-    
-        // code/state があるのに isLoggedIn が false の場合は認証失敗
-        showError('認証に失敗しました。LINE WORKS アプリから再度お試しください。');
-    
+  
+        // 4. woff.init 完了直後の WOFF 内部状態を取得
+        const stateInfo = {
+          isInClient: woff.isInClient ? woff.isInClient() : '未定義',
+          isLoggedIn: woff.isLoggedIn ? woff.isLoggedIn() : '未定義',
+          version: woff.getVersion ? woff.getVersion() : '未定義',
+          getLanguage: woff.getLanguage ? woff.getLanguage() : '未定義'
+        };
+        logDebugInfo('3. WOFF Init 成功後の状態', stateInfo);
+  
+        // ★ ここで処理を強制停止します（woff.login() は絶対に呼びません）
+        logDebugInfo('4. 検証ストップ', 'リダイレクト前に安全に停止しました。エラー画面には遷移しません。');
+  
       } catch (err) {
-        console.error('WOFF Error:', err);
-        showError('WOFF初期化エラー: ' + (err.message || JSON.stringify(err)));
-      }
-    }
-    
-    async function loadFormData() {
-      if (!targetUserId) {
-        showError('ユーザーIDが特定できませんでした');
-        return;
-      }
-
-      try {
-        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`);
-        if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
-        
-        const data = await res.json();
-        if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
-
-        currentTeam = data.teamName || '未設定';
-        document.getElementById('team-name').innerText = currentTeam;
-        document.getElementById('reporter-name').innerText = currentUserDisplayName;
-
-        renderMembers('group-web-tl', data.members || []);
-        renderMembers('group-pj-trans', data.members || []);
-
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('form-area').style.display = 'block';
-
-      } catch (err) {
-        showError(err.message || JSON.stringify(err));
-      }
-    }
-
-    function renderMembers(elementId, members) {
-      const container = document.getElementById(elementId);
-      container.innerHTML = '';
-      if (!members || members.length === 0) {
-        container.innerHTML = '<span style="font-size:0.85rem; color:#888;">該当メンバーなし</span>';
-        return;
-      }
-      members.forEach(m => {
-        const label = document.createElement('label');
-        label.className = 'checkbox-label';
-        label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
-        container.appendChild(label);
-      });
-    }
-
-    function getCheckedValues(elementId) {
-      const cbs = document.querySelectorAll(`#${elementId} input:checked`);
-      const vals = Array.from(cbs).map(cb => cb.value);
-      return vals.length > 0 ? vals.join('、') : 'なし';
-    }
-
-    async function sendReport() {
-      if (!targetUserId) {
-        alert('ユーザーIDが特定できていません');
-        return;
-      }
-
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.innerText = '送信中...';
-
-      const now = new Date();
-      const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      
-      const webTl = getCheckedValues('group-web-tl');
-      const pjTrans = getCheckedValues('group-pj-trans');
-
-      const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
-
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            message: message,
-            userId: targetUserId
-          })
+        logDebugInfo('❌ エラー発生', {
+          message: err.message,
+          stack: err.stack,
+          rawError: JSON.stringify(err)
         });
-
-        const data = await res.json();
-        if (data.status === 'success') {
-          alert('報告メッセージを送信しました。この画面を閉じてください。');
-          btn.innerText = '送信完了';
-          if (typeof woff !== 'undefined' && woff.closeWindow) {
-            woff.closeWindow();
-          }
-        } else {
-          throw new Error(data.message || '送信に失敗しました');
-        }
-      } catch (err) {
-        alert('送信エラー: ' + err.message);
-        btn.disabled = false;
-        btn.innerText = '報告メッセージを送信';
       }
     }
-
-    // DOMロード完了時に実行
-    window.addEventListener('DOMContentLoaded', main);
+  
+    window.addEventListener('DOMContentLoaded', main);    
   </script>
 </body>
 </html>
