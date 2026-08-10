@@ -139,45 +139,49 @@
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
     
+      // --- パターン1: URLパラメータに userId がある場合（PCブラウザ直接アクセス等） ---
+      if (paramUserId) {
+        console.log('URLパラメータからuserIdを取得しました:', paramUserId);
+        targetUserId = paramUserId;
+        currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
+        await loadFormData();
+        return;
+      }
+    
+      // --- パターン2: WOFF環境（LINE WORKSアプリ内等）の場合 ---
       try {
         if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDKの読み込みに失敗しました。');
+          throw new Error('WOFF SDKが読み込まれていません。');
         }
     
-        // 1. WOFF初期化
+        // WOFF初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // 2. クエリパラメータ指定（PC単体テスト等）があれば優先
-        if (paramUserId) {
-          targetUserId = paramUserId;
-          currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
-          await loadFormData();
-          return;
-        }
-    
-        // 3. ログインチェック
+        // アプリ内等で未ログインの場合（外部ブラウザでWOFF URLを開いた場合など）
         if (!woff.isLoggedIn()) {
-          // 引数を渡さずに呼ぶことで、Consoleで設定した Endpoint URL / Redirect URL へ安全に飛ばします
+          // エラーを避けるため redirectUri は指定せず標準ログインを実行
           woff.login();
           return;
         }
     
-        // 4. 認証完了後のプロファイル取得
+        // ログイン済みであればプロファイル取得
         const profile = await woff.getProfile();
         targetUserId = profile.userId;
         currentUserDisplayName = extractDisplayName(profile);
     
-        // 5. GASデータ読み込み
         await loadFormData();
     
       } catch (err) {
-        console.error('WOFF Error:', err);
+        console.error('WOFF Init/Login Error:', err);
+        
+        // SDK認証に失敗しても、もしuserIdがあればフォールバック動作
         if (paramUserId) {
           targetUserId = paramUserId;
-          currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
+          currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
           await loadFormData();
         } else {
-          showError(err.message || JSON.stringify(err));
+          // 画面に分かりやすいメッセージを表示
+          showError('認証に失敗しました。LINE WORKSアプリ内から開くか、URLの末尾に ?userId=YOUR_ID を指定してアクセスしてください。');
         }
       }
     }
