@@ -83,9 +83,14 @@
   </style>
 
   <!-- <script src="https://static.worksmobile.net/static/woff/sdk/1.0/woff.sdk.js"></script> -->
+  <!-- WOFF SDK -->
   <script
     charset="utf-8"
     src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js">
+  </script>
+
+  <script>
+    console.log('SDK確認:', typeof woff);
   </script>
 </head>
 <body>
@@ -266,6 +271,57 @@
     }
 
     window.addEventListener('DOMContentLoaded', main);
+  </script>
+
+  <script>
+    async function initialize() {
+      try {
+  
+        console.log('woff:', window.woff);
+  
+        if (typeof woff === 'undefined') {
+          throw new Error('WOFF SDKの読み込みに失敗しました。');
+        }
+  
+        // WOFF初期化
+        await woff.init({
+          woffId: 'ここにWOFF ID'
+        });
+  
+        console.log('WOFF初期化成功');
+  
+        // PC版LINE WORKS → Edgeの場合は外部ブラウザ扱い
+        if (!woff.isInClient()) {
+          console.log('外部ブラウザで起動しています');
+  
+          // ログインしていなければログイン
+          if (!woff.isLoggedIn()) {
+            woff.login({
+              redirectUri: window.location.href
+            });
+            return;
+          }
+        }
+  
+        // ユーザー情報取得
+        const profile = await woff.getProfile();
+  
+        console.log('profile:', profile);
+  
+        document.getElementById('reporter-name').textContent =
+          profile.displayName;
+  
+      } catch (error) {
+  
+        console.error('WOFFエラー:', error);
+  
+        document.getElementById('loading').textContent =
+          'エラー: ' + error.message;
+      }
+    }
+  
+    // HTML読み込み後に実行
+    initialize();
   </script>
 </body>
 </html>
