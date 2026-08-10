@@ -122,8 +122,8 @@
     function showError(msg) {
       const loadingEl = document.getElementById('loading');
       if (loadingEl) {
-        loadingEl.style.color = 'red';
-        loadingEl.innerText = 'エラーが発生しました:\n' + msg;
+        loadingEl.style.color = '#d9534f';
+        loadingEl.innerHTML = `<strong>エラーが発生しました</strong><br><span style="font-size:0.85rem; word-break:break-all;">${msg}</span>`;
       }
       console.error(msg);
     }
@@ -148,14 +148,13 @@
     
       try {
         if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDKが読み込まれていません。');
+          throw new Error('WOFF SDK (sdk.js) が読み込まれていません。');
         }
     
         // 2. WOFF 初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // 3. woff.login() は呼ばずに、直接プロファイル取得を試みる
-        // (LINE WORKS アプリ内から WOFF URL 経由で開いている場合、これで取得可能です)
+        // 3. プロファイル取得
         const profile = await woff.getProfile();
         
         if (profile && profile.userId) {
@@ -165,28 +164,13 @@
           return;
         }
     
-        throw new Error('ユーザー情報の取得に失敗しました。');
+        throw new Error('profile.userId を取得できませんでした。');
     
       } catch (err) {
-        console.error('WOFF Error:', err);
-        // OAuthエラー画面へ飛ばさず、安全なフォールバック案内を表示
-        showWebFallbackUI();
-      }
-    }
-    
-    function showWebFallbackUI() {
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) {
-        loadingEl.innerHTML = `
-          <div style="padding: 20px; text-align: center; line-height: 1.6;">
-            <p style="font-weight: bold; color: #333; margin-bottom: 8px;">【LINE WORKS アプリからご利用ください】</p>
-            <p style="font-size: 0.85rem; color: #666; margin-bottom: 16px;">
-              自動ログイン情報の取得ができませんでした。<br>
-              LINE WORKS アプリのトーク画面（固定メニュー）から再度開き直すか、<br>
-              URLの末尾に <code>?userId=自分のID</code> を付与してアクセスしてください。
-            </p>
-          </div>
-        `;
+        console.error('WOFF Detail Error:', err);
+        // エラー詳細を画面上にそのまま表示する
+        const errMsg = err.message || JSON.stringify(err) || err.toString();
+        showError(`[WOFF Error] ${errMsg}`);
       }
     }
     
