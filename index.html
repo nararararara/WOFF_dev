@@ -135,6 +135,27 @@
       return fullName || profile.displayName || profile.userId;
     }
 
+
+    // --- デバッグ用関数の定義 ---
+    function debugWOFFState() {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      console.group('WOFF Debug Info');
+      console.log('URL:', window.location.href);
+      console.log('OAuth code:', urlParams.get('code') || 'なし');
+      console.log('OAuth state:', urlParams.get('state') || 'なし');
+      
+      if (typeof woff !== 'undefined') {
+        console.log('isInClient:', woff.isInClient ? woff.isInClient() : '未定義');
+        console.log('isLoggedIn:', woff.isLoggedIn ? woff.isLoggedIn() : '未定義');
+        console.log('WOFF Version:', woff.getVersion ? woff.getVersion() : '未定義');
+      } else {
+        console.log('woff SDK: 未読み込み');
+      }
+      console.groupEnd();
+    }
+
+    
     async function main() {
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
