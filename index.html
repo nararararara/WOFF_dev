@@ -331,36 +331,36 @@
         searchParams: Object.fromEntries(urlParams.entries())
       });
   
-      try {
-        if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDK (sdk.js) が読み込まれていません');
-        }
+      // try {
+      //   if (typeof woff === 'undefined') {
+      //     throw new Error('WOFF SDK (sdk.js) が読み込まれていません');
+      //   }
   
-        // 2. woff.init 直前
-        logDebugInfo('2. WOFF Init 開始前', { woffId: WOFF_ID });
+      //   // 2. woff.init 直前
+      //   logDebugInfo('2. WOFF Init 開始前', { woffId: WOFF_ID });
   
-        // 3. WOFF 初期化実行
-        await woff.init({ woffId: WOFF_ID });
+      //   // 3. WOFF 初期化実行
+      //   await woff.init({ woffId: WOFF_ID });
   
-        // 4. woff.init 完了直後の WOFF 内部状態を取得
-        const stateInfo = {
-          isInClient: woff.isInClient ? woff.isInClient() : '未定義',
-          isLoggedIn: woff.isLoggedIn ? woff.isLoggedIn() : '未定義',
-          version: woff.getVersion ? woff.getVersion() : '未定義',
-          getLanguage: woff.getLanguage ? woff.getLanguage() : '未定義'
-        };
-        logDebugInfo('3. WOFF Init 成功後の状態', stateInfo);
+      //   // 4. woff.init 完了直後の WOFF 内部状態を取得
+      //   const stateInfo = {
+      //     isInClient: woff.isInClient ? woff.isInClient() : '未定義',
+      //     isLoggedIn: woff.isLoggedIn ? woff.isLoggedIn() : '未定義',
+      //     version: woff.getVersion ? woff.getVersion() : '未定義',
+      //     getLanguage: woff.getLanguage ? woff.getLanguage() : '未定義'
+      //   };
+      //   logDebugInfo('3. WOFF Init 成功後の状態', stateInfo);
   
-        // ★ ここで処理を強制停止します（woff.login() は絶対に呼びません）
-        logDebugInfo('4. 検証ストップ', 'リダイレクト前に安全に停止しました。エラー画面には遷移しません。');
+      //   // ★ ここで処理を強制停止します（woff.login() は絶対に呼びません）
+      //   logDebugInfo('4. 検証ストップ', 'リダイレクト前に安全に停止しました。エラー画面には遷移しません。');
   
-      } catch (err) {
-        logDebugInfo('❌ エラー発生', {
-          message: err.message,
-          stack: err.stack,
-          rawError: JSON.stringify(err)
-        });
-      }
+      // } catch (err) {
+      //   logDebugInfo('❌ エラー発生', {
+      //     message: err.message,
+      //     stack: err.stack,
+      //     rawError: JSON.stringify(err)
+      //   });
+      // }
     }
   
     window.addEventListener('DOMContentLoaded', main);    
