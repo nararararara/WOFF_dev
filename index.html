@@ -138,45 +138,42 @@
     async function main() {
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
-
+    
       try {
         if (typeof woff === 'undefined') {
           throw new Error('WOFF SDKの読み込みに失敗しました。');
         }
-
-        // 1. WOFF初期化
+    
+        // 1. 初期化
+        console.log('WOFF Init開始:', WOFF_ID);
         await woff.init({ woffId: WOFF_ID });
-
+        console.log('WOFF Init成功');
+    
         if (paramUserId) {
-          // PCブラウザテスト等のパラメータ指定時
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
         } else {
-          // 外部ブラウザ（Edge等）かつ未ログイン時の処理
-          if (!woff.isInClient() && !woff.isLoggedIn()) {
-            woff.login({ redirectUri: window.location.href });
+          // ログイン状態ログ
+          console.log('isInClient:', woff.isInClient());
+          console.log('isLoggedIn:', woff.isLoggedIn());
+    
+          if (!woff.isLoggedIn()) {
+            console.log('未ログインのため woff.login() を実行します');
+            // 引数なしで実行して動作確認
+            woff.login();
             return;
           }
-
-          // 外部ブラウザ（Edge等）かつ未ログイン時の処理
-          if (!woff.isInClient() && !woff.isLoggedIn()) {
-            // リダイレクトURIをクエリパラメータなしの完全なURLに統一
-            const currentUrl = window.location.href.split('?')[0];
-            woff.login({ redirectUri: currentUrl });
-            return;
-          }
-
+    
           const profile = await woff.getProfile();
+          console.log('取得したProfile:', profile);
           targetUserId = profile.userId;
           currentUserDisplayName = extractDisplayName(profile);
         }
-
-        // 2. GASからフォームデータ取得
+    
         await loadFormData();
-
+    
       } catch (err) {
-        console.error('WOFF Error:', err);
-        // パラメータ指定があれば初期化失敗でもフォールバック実行
+        console.error('WOFF Error詳細:', err);
         if (paramUserId) {
           targetUserId = paramUserId;
           currentUserDisplayName = 'テストユーザー(' + paramUserId + ')';
