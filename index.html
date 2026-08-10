@@ -154,21 +154,28 @@
         // 2. WOFF 初期化
         await woff.init({ woffId: WOFF_ID });
     
-        // 3. プロファイル取得
-        const profile = await woff.getProfile();
-        
-        if (profile && profile.userId) {
-          targetUserId = profile.userId;
-          currentUserDisplayName = extractDisplayName(profile);
-          await loadFormData();
+        // 3. ログイン状態の確認
+        if (woff.isLoggedIn()) {
+          // ログイン済み（アクセストークン保有状態）であればプロファイル取得
+          const profile = await woff.getProfile();
+          if (profile && profile.userId) {
+            targetUserId = profile.userId;
+            currentUserDisplayName = extractDisplayName(profile);
+            await loadFormData();
+            return;
+          }
+        } else {
+          // 未ログイン状態の場合、トークン取得のためログイン処理を実行
+          // (アプリ内であれば認証完了後に自動で元の画面へリダイレクトリロードされます)
+          console.log('未ログインのため woff.login() を実行します');
+          woff.login();
           return;
         }
     
-        throw new Error('profile.userId を取得できませんでした。');
+        throw new Error('ユーザープロファイルの取得に失敗しました。');
     
       } catch (err) {
         console.error('WOFF Detail Error:', err);
-        // エラー詳細を画面上にそのまま表示する
         const errMsg = err.message || JSON.stringify(err) || err.toString();
         showError(`[WOFF Error] ${errMsg}`);
       }
