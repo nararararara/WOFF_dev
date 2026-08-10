@@ -27,6 +27,23 @@
       padding-bottom: 8px;
       color: #00c73c;
     }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background-color: #fff;
+    }
     .info-box {
       background: #eef9f1;
       padding: 10px 14px;
@@ -74,14 +91,13 @@
     }
     #loading {
       text-align: center;
-      padding: 40px 0;
+      padding: 20px 0;
       font-size: 0.9rem;
       color: #666;
-      word-break: break-all;
     }
   </style>
 
-  <!-- WOFF SDK -->
+  <!-- ウィンドウを閉じる機能のためだけに WOFF SDK を読込 -->
   <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js"></script>
 </head>
 <body>
@@ -89,12 +105,20 @@
   <div class="container">
     <h2>書類承認状況報告</h2>
 
-    <div id="loading">データ読み込み中...</div>
+    <!-- 1. 報告者（リーダー）選択 -->
+    <div class="form-group">
+      <label for="leader-select">報告者を選択してください：</label>
+      <select id="leader-select" onchange="onLeaderChange()">
+        <option value="">-- 選択してください --</option>
+      </select>
+    </div>
 
+    <div id="loading" style="display: none;">データを読み込み中...</div>
+
+    <!-- 2. 未承認メンバー選択エリア -->
     <div id="form-area" style="display: none;">
       <div class="info-box">
-        報告者: <strong><span id="reporter-name">-</span></strong><br>
-        チーム: <strong><span id="team-name">-</span></strong>
+        担当チーム: <strong><span id="team-name">-</span></strong>
       </div>
 
       <div class="section-title">■ 機能組織（Web部分）- TL未承認メンバー</div>
@@ -111,98 +135,81 @@
     const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
 
-    let targetUserId = '';
-    let currentUserDisplayName = '利用メンバー';
+    let currentSelectedUserId = '';
+    let currentSelectedName = '';
     let currentTeam = '';
 
-    function showError(msg) {
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) {
-        loadingEl.style.color = '#d9534f';
-        loadingEl.innerHTML = `<strong>エラーが発生しました</strong><br><span style="font-size:0.85rem;">${msg}</span>`;
-      }
-      console.error(msg);
-    }
-
-    function extractDisplayName(profile) {
-      const userName = profile.userName || {};
-      const fullName = `${userName.lastName || ''} ${userName.firstName || ''}`.trim();
-      return fullName || profile.displayName || profile.userId;
-    }
-
+    // 画面ロード時処理
     async function main() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paramUserId = urlParams.get('userId');
-
-      // 1. Botからのボタンメッセージ経由 (?userId=xxx)
-      if (paramUserId) {
-        targetUserId = paramUserId;
-        currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
-        await loadFormData();
-        return;
-      }
-
-      // 2. userId が付与されていない場合のWoff試行
+      // WOFF SDK の初期化（画面を閉じる用）
       try {
         if (typeof woff !== 'undefined') {
           await woff.init({ woffId: WOFF_ID });
-          if (woff.isLoggedIn()) {
-            const profile = await woff.getProfile();
-            if (profile && profile.userId) {
-              targetUserId = profile.userId;
-              currentUserDisplayName = extractDisplayName(profile);
-              await loadFormData();
-              return;
-            }
-          }
         }
       } catch (e) {
-        console.warn('WOFF Init Fail:', e);
+        console.warn('WOFF SDK Init skip:', e);
       }
 
-      // 3. OAuthエラー画面に飛ばさず案内を表示
-      showWebFallbackUI();
+      // リーダー一覧を取得してドロップダウンを生成
+      await fetchLeaders();
     }
 
-    function showWebFallbackUI() {
+    // リーダー一覧の取得
+    async function fetchLeaders() {
+      try {
+        const res = await fetch(GAS_API_URL);
+        const data = await res.json();
+        
+        const selectEl = document.getElementById('leader-select');
+        selectEl.innerHTML = '<option value="">-- 選択してください --</option>';
+
+        if (data.leaders && data.leaders.length > 0) {
+          data.leaders.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id;
+            opt.textContent = l.name;
+            selectEl.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        alert('リーダー一覧の読み込みに失敗しました: ' + err.message);
+      }
+    }
+
+    // ドロップダウン選択時の処理
+    async function onLeaderChange() {
+      const selectEl = document.getElementById('leader-select');
+      currentSelectedUserId = selectEl.value;
+      currentSelectedName = selectEl.options[selectEl.selectedIndex].text;
+
+      const formArea = document.getElementById('form-area');
       const loadingEl = document.getElementById('loading');
-      if (loadingEl) {
-        loadingEl.innerHTML = `
-          <div style="padding: 20px; text-align: center; line-height: 1.6;">
-            <p style="font-weight: bold; color: #333; margin-bottom: 8px;">【LINE WORKS アプリからご利用ください】</p>
-            <p style="font-size: 0.85rem; color: #666; margin-bottom: 16px;">
-              Botトーク画面に届いている「報告フォームを開く」ボタンからアクセスしてください。
-            </p>
-          </div>
-        `;
-      }
-    }
 
-    async function loadFormData() {
-      if (!targetUserId) {
-        showError('ユーザーIDが特定できませんでした');
+      if (!currentSelectedUserId) {
+        formArea.style.display = 'none';
         return;
       }
 
+      loadingEl.style.display = 'block';
+      formArea.style.display = 'none';
+
       try {
-        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`);
-        if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
-        
+        // 選択されたリーダーのデータ（未承認メンバー）を取得
+        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(currentSelectedUserId)}`);
         const data = await res.json();
-        if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
 
         currentTeam = data.teamName || '未設定';
         document.getElementById('team-name').innerText = currentTeam;
-        document.getElementById('reporter-name').innerText = currentUserDisplayName;
 
         renderMembers('group-web-tl', data.members || []);
         renderMembers('group-pj-trans', data.members || []);
 
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('form-area').style.display = 'block';
+        loadingEl.style.display = 'none';
+        formArea.style.display = 'block';
 
       } catch (err) {
-        showError(err.message || JSON.stringify(err));
+        loadingEl.style.display = 'none';
+        alert('データの取得に失敗しました: ' + err.message);
       }
     }
 
@@ -227,9 +234,10 @@
       return vals.length > 0 ? vals.join('、') : 'なし';
     }
 
+    // 報告送信処理
     async function sendReport() {
-      if (!targetUserId) {
-        alert('ユーザーIDが特定できていません');
+      if (!currentSelectedUserId) {
+        alert('報告者を選択してください');
         return;
       }
 
@@ -243,7 +251,7 @@
       const webTl = getCheckedValues('group-web-tl');
       const pjTrans = getCheckedValues('group-pj-trans');
 
-      const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
+      const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}（報告者: ${currentSelectedName}）の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
 
       try {
         const res = await fetch(GAS_API_URL, {
@@ -251,7 +259,7 @@
           headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             message: message,
-            userId: targetUserId
+            userId: currentSelectedUserId
           })
         });
 
