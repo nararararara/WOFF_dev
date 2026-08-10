@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>書類承認状況報告</title>
-  
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -83,10 +82,7 @@
   </style>
 
   <!-- WOFF SDK -->
-  <script
-    charset="utf-8"
-    src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js">
-  </script>
+  <script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.7.1/sdk.js"></script>
 </head>
 <body>
 
@@ -112,103 +108,104 @@
   </div>
 
   <script>
-   const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
+    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
     const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbz1R1PJHHWelNhuu5-6eil1-kzcvFfezfDunHF8nfI0B_lW3TSgfhF6YAxihMOiusZp/exec';
-    
+
     let targetUserId = '';
     let currentUserDisplayName = '利用メンバー';
     let currentTeam = '';
-    
+
     function showError(msg) {
       const loadingEl = document.getElementById('loading');
       if (loadingEl) {
         loadingEl.style.color = '#d9534f';
-        loadingEl.innerHTML = `<strong>エラーが発生しました</strong><br><span style="font-size:0.85rem; word-break:break-all;">${msg}</span>`;
+        loadingEl.innerHTML = `<strong>エラーが発生しました</strong><br><span style="font-size:0.85rem;">${msg}</span>`;
       }
       console.error(msg);
     }
-    
+
     function extractDisplayName(profile) {
       const userName = profile.userName || {};
       const fullName = `${userName.lastName || ''} ${userName.firstName || ''}`.trim();
       return fullName || profile.displayName || profile.userId;
     }
-    
+
     async function main() {
       const urlParams = new URLSearchParams(window.location.search);
       const paramUserId = urlParams.get('userId');
-    
-      // 1. テスト用/直接指定用 (?userId=xxx) の場合
+
+      // 1. Botからのボタンメッセージ経由 (?userId=xxx)
       if (paramUserId) {
         targetUserId = paramUserId;
         currentUserDisplayName = 'ユーザー(' + paramUserId + ')';
         await loadFormData();
         return;
       }
-    
+
+      // 2. userId が付与されていない場合のWoff試行
       try {
-        if (typeof woff === 'undefined') {
-          throw new Error('WOFF SDK (sdk.js) が読み込まれていません。');
-        }
-    
-        // 2. WOFF 初期化
-        await woff.init({ woffId: WOFF_ID });
-    
-        // 3. ログイン状態の確認
-        if (woff.isLoggedIn()) {
-          // ログイン済み（アクセストークン保有状態）であればプロファイル取得
-          const profile = await woff.getProfile();
-          if (profile && profile.userId) {
-            targetUserId = profile.userId;
-            currentUserDisplayName = extractDisplayName(profile);
-            await loadFormData();
-            return;
+        if (typeof woff !== 'undefined') {
+          await woff.init({ woffId: WOFF_ID });
+          if (woff.isLoggedIn()) {
+            const profile = await woff.getProfile();
+            if (profile && profile.userId) {
+              targetUserId = profile.userId;
+              currentUserDisplayName = extractDisplayName(profile);
+              await loadFormData();
+              return;
+            }
           }
-        } else {
-          // 未ログイン状態の場合、トークン取得のためログイン処理を実行
-          // (アプリ内であれば認証完了後に自動で元の画面へリダイレクトリロードされます)
-          console.log('未ログインのため woff.login() を実行します');
-          woff.login();
-          return;
         }
-    
-        throw new Error('ユーザープロファイルの取得に失敗しました。');
-    
-      } catch (err) {
-        console.error('WOFF Detail Error:', err);
-        const errMsg = err.message || JSON.stringify(err) || err.toString();
-        showError(`[WOFF Error] ${errMsg}`);
+      } catch (e) {
+        console.warn('WOFF Init Fail:', e);
+      }
+
+      // 3. OAuthエラー画面に飛ばさず案内を表示
+      showWebFallbackUI();
+    }
+
+    function showWebFallbackUI() {
+      const loadingEl = document.getElementById('loading');
+      if (loadingEl) {
+        loadingEl.innerHTML = `
+          <div style="padding: 20px; text-align: center; line-height: 1.6;">
+            <p style="font-weight: bold; color: #333; margin-bottom: 8px;">【LINE WORKS アプリからご利用ください】</p>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 16px;">
+              Botトーク画面に届いている「報告フォームを開く」ボタンからアクセスしてください。
+            </p>
+          </div>
+        `;
       }
     }
-    
+
     async function loadFormData() {
       if (!targetUserId) {
         showError('ユーザーIDが特定できませんでした');
         return;
       }
-    
+
       try {
         const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(targetUserId)}`);
         if (!res.ok) throw new Error(`GAS通信エラー (HTTP ${res.status})`);
         
         const data = await res.json();
         if (data.error) throw new Error('GASデータ取得エラー: ' + data.error);
-    
+
         currentTeam = data.teamName || '未設定';
         document.getElementById('team-name').innerText = currentTeam;
         document.getElementById('reporter-name').innerText = currentUserDisplayName;
-    
+
         renderMembers('group-web-tl', data.members || []);
         renderMembers('group-pj-trans', data.members || []);
-    
+
         document.getElementById('loading').style.display = 'none';
         document.getElementById('form-area').style.display = 'block';
-    
+
       } catch (err) {
         showError(err.message || JSON.stringify(err));
       }
     }
-    
+
     function renderMembers(elementId, members) {
       const container = document.getElementById(elementId);
       container.innerHTML = '';
@@ -223,31 +220,31 @@
         container.appendChild(label);
       });
     }
-    
+
     function getCheckedValues(elementId) {
       const cbs = document.querySelectorAll(`#${elementId} input:checked`);
       const vals = Array.from(cbs).map(cb => cb.value);
       return vals.length > 0 ? vals.join('、') : 'なし';
     }
-    
+
     async function sendReport() {
       if (!targetUserId) {
         alert('ユーザーIDが特定できていません');
         return;
       }
-    
+
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
       btn.innerText = '送信中...';
-    
+
       const now = new Date();
       const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       
       const webTl = getCheckedValues('group-web-tl');
       const pjTrans = getCheckedValues('group-pj-trans');
-    
+
       const message = `@○○課長\nお疲れ様です。\n${timeStr}時点での${currentTeam}の書類承認状況を連絡します。\n\n■機能組織（Web部分）\n・TL未承認メンバー\n ${webTl}\n\n■楽楽精算\n○PJ組織交通費精算\n・PL承認待ち\n ${pjTrans}\n\n以上です。`;
-    
+
       try {
         const res = await fetch(GAS_API_URL, {
           method: 'POST',
@@ -257,7 +254,7 @@
             userId: targetUserId
           })
         });
-    
+
         const data = await res.json();
         if (data.status === 'success') {
           alert('報告メッセージを送信しました。この画面を閉じてください。');
@@ -274,7 +271,7 @@
         btn.innerText = '報告メッセージを送信';
       }
     }
-    
+
     window.addEventListener('DOMContentLoaded', main);
   </script>
 </body>
