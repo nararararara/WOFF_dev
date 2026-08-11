@@ -107,11 +107,11 @@
 </head>
 <body>
   <!-- ＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠ -->
-<div style="padding: 20px;">
+<!-- <div style="padding: 20px;">
   <h2>WOFF ユーザー情報取得テスト</h2>
   <div id="status" style="font-weight: bold; margin-bottom: 10px; color: #00c73c;">初期化前</div>
   <pre id="result" style="background: #f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-break: break-all;"></pre>
-</div>
+</div> -->
   <!-- ＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠＠ -->
   <div class="container">
     <h2>書類承認状況報告</h2>
@@ -185,248 +185,197 @@
   </div>
 
   <script>
-    // const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
-    // const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxe-u7oU4DzE1f5lfqdZfN5af3d_Dv95y6TmulhQjFczhQXBSUJWCU8rYj5UtMcl5u2/exec';
+    const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxe-u7oU4DzE1f5lfqdZfN5af3d_Dv95y6TmulhQjFczhQXBSUJWCU8rYj5UtMcl5u2/exec';
 
-    // // チェックボックス項目の定義ID
-    // const SECTION_IDS = [
-    //   'sec-web-tl-approved', 'sec-web-tl-pending',
-    //   'sec-pj-pl-approved', 'sec-pj-pl-pending',
-    //   'sec-rr-f-trans-approved', 'sec-rr-f-trans-pending',
-    //   'sec-rr-f-exp-approved', 'sec-rr-f-exp-pending',
-    //   'sec-rr-p-trans-approved', 'sec-rr-p-trans-pending',
-    //   'sec-rr-p-exp-approved', 'sec-rr-p-exp-pending',
-    //   'sec-rr-p-trans-reimb-approved', 'sec-rr-p-trans-reimb-pending',
-    //   'sec-rr-p-exp-reimb-approved', 'sec-rr-p-exp-reimb-pending'
-    // ];
+    // チェックボックス項目の定義ID
+    const SECTION_IDS = [
+      'sec-web-tl-approved', 'sec-web-tl-pending',
+      'sec-pj-pl-approved', 'sec-pj-pl-pending',
+      'sec-rr-f-trans-approved', 'sec-rr-f-trans-pending',
+      'sec-rr-f-exp-approved', 'sec-rr-f-exp-pending',
+      'sec-rr-p-trans-approved', 'sec-rr-p-trans-pending',
+      'sec-rr-p-exp-approved', 'sec-rr-p-exp-pending',
+      'sec-rr-p-trans-reimb-approved', 'sec-rr-p-trans-reimb-pending',
+      'sec-rr-p-exp-reimb-approved', 'sec-rr-p-exp-reimb-pending'
+    ];
 
-    // let currentLeaderLastName = '';
+    let currentLeaderLastName = '';
 
-    // async function main() {
-    //   try {
-    //     if (typeof woff !== 'undefined') await woff.init({ woffId: WOFF_ID });
-    //   } catch (e) {}
-    //   await fetchLeaders();
-    // }
+    async function main() {
+      try {
+        if (typeof woff !== 'undefined') await woff.init({ woffId: WOFF_ID });
+      } catch (e) {}
+      await fetchLeaders();
+    }
 
-    // async function fetchLeaders() {
-    //   try {
-    //     const res = await fetch(GAS_API_URL);
-    //     const data = await res.json();
-    //     const selectEl = document.getElementById('leader-select');
-    //     selectEl.innerHTML = '<option value="">-- 選択してください --</option>';
+    async function fetchLeaders() {
+      try {
+        const res = await fetch(GAS_API_URL);
+        const data = await res.json();
+        const selectEl = document.getElementById('leader-select');
+        selectEl.innerHTML = '<option value="">-- 選択してください --</option>';
 
-    //     if (data.leaders && data.leaders.length > 0) {
-    //       data.leaders.forEach(l => {
-    //         const opt = document.createElement('option');
-    //         opt.value = l.id;
-    //         opt.textContent = l.name;
-    //         selectEl.appendChild(opt);
-    //       });
-    //     }
-    //   } catch (err) {
-    //     alert('リーダー一覧の読み込みに失敗しました: ' + err.message);
-    //   }
-    // }
+        if (data.leaders && data.leaders.length > 0) {
+          data.leaders.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id;
+            opt.textContent = l.name;
+            selectEl.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        alert('リーダー一覧の読み込みに失敗しました: ' + err.message);
+      }
+    }
 
-    // async function onLeaderChange() {
-    //   const selectEl = document.getElementById('leader-select');
-    //   const selectedId = selectEl.value;
-    //   const selectedText = selectEl.options[selectEl.selectedIndex].text;
+    async function onLeaderChange() {
+      const selectEl = document.getElementById('leader-select');
+      const selectedId = selectEl.value;
+      const selectedText = selectEl.options[selectEl.selectedIndex].text;
 
-    //   if (!selectedId) {
-    //     document.getElementById('form-area').style.display = 'none';
-    //     return;
-    //   }
-
-    //   // 名前から苗字（最初のスペースまで）を抽出
-    //   currentLeaderLastName = selectedText.split(' ')[0].split(' ')[0];
-
-    //   document.getElementById('loading').style.display = 'block';
-    //   document.getElementById('form-area').style.display = 'none';
-
-    //   try {
-    //     const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(selectedId)}`);
-    //     const data = await res.json();
-
-    //     // 全エリアにメンバーのチェックボックスを展開
-    //     SECTION_IDS.forEach(id => renderMembers(id, data.members || []));
-
-    //     document.getElementById('loading').style.display = 'none';
-    //     document.getElementById('form-area').style.display = 'block';
-
-    //   } catch (err) {
-    //     document.getElementById('loading').style.display = 'none';
-    //     alert('データの取得に失敗しました: ' + err.message);
-    //   }
-    // }
-
-    // function renderMembers(elementId, members) {
-    //   const container = document.getElementById(elementId);
-    //   container.innerHTML = '';
-    //   if (!members || members.length === 0) return;
-
-    //   members.forEach((m, idx) => {
-    //     const label = document.createElement('label');
-    //     label.className = 'checkbox-label';
-    //     label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
-    //     container.appendChild(label);
-    //   });
-    // }
-
-    // function getCheckedValues(elementId) {
-    //   const cbs = document.querySelectorAll(`#${elementId} input:checked`);
-    //   return Array.from(cbs).map(cb => cb.value);
-    // }
-
-    // async function sendReport() {
-    //   const btn = document.getElementById('submit-btn');
-    //   btn.disabled = true;
-    //   btn.innerText = '送信中...';
-
-    //   const now = new Date();
-    //   const mm = String(now.getMonth() + 1).padStart(2, '0');
-    //   const dd = String(now.getDate()).padStart(2, '0');
-    //   const hh = String(now.getHours()).padStart(2, '0');
-    //   const min = String(now.getMinutes()).padStart(2, '0');
-    //   const timeStr = `${mm}/${dd} ${hh}:${min}`;
-
-    //   // 各項目の選択値を取得
-    //   const getVal = (id) => getCheckedValues(id);
-
-    //   // --- フォーマットの組み立て（チェックがある項目のみ追加） ---
-    //   let msg = `お疲れ様です。\n${timeStr}時点での${currentLeaderLastName}チームの書類承認状況を連絡します。\n\n`;
-
-    //   // ■ 機能組織（Web部分）
-    //   const webTlApp = getVal('sec-web-tl-approved');
-    //   const webTlPen = getVal('sec-web-tl-pending');
-    //   if (webTlApp.length > 0 || webTlPen.length > 0) {
-    //     msg += `■機能組織（Web部分）\n`;
-    //     if (webTlApp.length > 0) msg += `・すべてTL承認済み\n  ${webTlApp.join('、')}\n\n`;
-    //     if (webTlPen.length > 0) msg += `・未提出・修正待ち\n  ${webTlPen.join('、')}\n\n`;
-    //   }
-
-    //   // ■ PJ組織（Web部分）
-    //   const pjPlApp = getVal('sec-pj-pl-approved');
-    //   const pjPlPen = getVal('sec-pj-pl-pending');
-    //   if (pjPlApp.length > 0 || pjPlPen.length > 0) {
-    //     msg += `■PJ組織（Web部分）\n`;
-    //     if (pjPlApp.length > 0) msg += `・PL承認済み\n  ${pjPlApp.join('、')}\n\n`;
-    //     if (pjPlPen.length > 0) msg += `・未提出・修正待ち\n  ${pjPlPen.join('、')}\n\n`;
-    //   }
-
-    //   // ■ 楽楽精算
-    //   const r1 = getVal('sec-rr-f-trans-approved');
-    //   const r2 = getVal('sec-rr-f-trans-pending');
-    //   const r3 = getVal('sec-rr-f-exp-approved');
-    //   const r4 = getVal('sec-rr-f-exp-pending');
-    //   const r5 = getVal('sec-rr-p-trans-approved');
-    //   const r6 = getVal('sec-rr-p-trans-pending');
-    //   const r7 = getVal('sec-rr-p-exp-approved');
-    //   const r8 = getVal('sec-rr-p-exp-pending');
-    //   const r9 = getVal('sec-rr-p-trans-reimb-approved');
-    //   const r10 = getVal('sec-rr-p-trans-reimb-pending');
-    //   const r11 = getVal('sec-rr-p-exp-reimb-approved');
-    //   const r12 = getVal('sec-rr-p-exp-reimb-pending');
-
-    //   const hasRaraku = [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12].some(arr => arr.length > 0);
-
-    //   if (hasRaraku) {
-    //     msg += `■楽楽精算\n`;
-    //     if (r1.length > 0) msg += `○機能組織交通費精算\n・TL承認済み\n  ${r1.join('、')}\n\n`;
-    //     if (r2.length > 0) msg += `○機能組織交通費精算\n・TL未承認\n  ${r2.join('、')}\n\n`;
-    //     if (r3.length > 0) msg += `○機能組織経費精算\n・TL承認済み\n  ${r3.join('、')}\n\n`;
-    //     if (r4.length > 0) msg += `○機能組織経費精算\n・TL未承認\n  ${r4.join('、')}\n\n`;
-    //     if (r5.length > 0) msg += `○PJ組織交通費精算\n・PL・TL承認済み\n  ${r5.join('、')}\n\n`;
-    //     if (r6.length > 0) msg += `○PJ組織交通費精算\n・PL承認待ち\n  ${r6.join('、')}\n\n`;
-    //     if (r7.length > 0) msg += `○PJ組織経費精算\n・PL・TL承認済み\n  ${r7.join('、')}\n\n`;
-    //     if (r8.length > 0) msg += `○PJ組織経費精算\n・PL承認待ち\n  ${r8.join('、')}\n\n`;
-    //     if (r9.length > 0) msg += `○PJ組織交通費精算（立替）\n・PL・TL承認済み\n  ${r9.join('、')}\n\n`;
-    //     if (r10.length > 0) msg += `○PJ組織交通費精算（立替）\n・PL承認待ち\n  ${r10.join('、')}\n\n`;
-    //     if (r11.length > 0) msg += `○PJ組織経費精算（立替）\n・PL・TL承認済み\n  ${r11.join('、')}\n\n`;
-    //     if (r12.length > 0) msg += `○PJ組織経費精算（立替）\n・PL承認待ち\n  ${r12.join('、')}\n\n`;
-    //   }
-
-    //   // ※ 特記事項
-    //   const noteText = document.getElementById('note-text').value.trim();
-    //   if (noteText) {
-    //     msg += `※特記事項\n${noteText}\n`;
-    //   }
-
-    //   try {
-    //     const res = await fetch(GAS_API_URL, {
-    //       method: 'POST',
-    //       headers: { 'Content-Type': 'text/plain' },
-    //       body: JSON.stringify({ message: msg })
-    //     });
-
-    //     const data = await res.json();
-    //     if (data.status === 'success') {
-    //       alert('報告メッセージを送信しました。画面を閉じてください。');
-    //       btn.innerText = '送信完了';
-    //       if (typeof woff !== 'undefined' && woff.closeWindow) woff.closeWindow();
-    //     } else {
-    //       throw new Error(data.message || '送信失敗');
-    //     }
-    //   } catch (err) {
-    //     alert('送信エラー: ' + err.message);
-    //     btn.disabled = false;
-    //     btn.innerText = '報告メッセージを送信';
-    //   }
-    // }
-
-    // window.addEventListener('DOMContentLoaded', main);
-
-
-
-  const WOFF_ID = '8cQPHvc-oYIgzb4RUMaLdA';
-
-  async function test() {
-    const status = document.getElementById('status');
-    const result = document.getElementById('result');
-
-    try {
-      // ① WOFF初期化
-      status.textContent = '① WOFF初期化中...';
-      await woff.init({ woffId: WOFF_ID });
-      status.textContent = '② WOFF初期化成功';
-
-      // ② ログイン判定
-      if (!woff.isLoggedIn()) {
-        status.textContent = '②-1 未ログインのためログイン処理を実行します...';
-        woff.login();
+      if (!selectedId) {
+        document.getElementById('form-area').style.display = 'none';
         return;
       }
 
-      // ③ プロフィール（ユーザー情報）の取得テスト
-      status.textContent = '③ getProfile() 実行中...';
-      const profile = await woff.getProfile();
-      status.textContent = '✅ getProfile() 取得成功！';
-      
-      // JSON形式で結果を画面に表示
-      result.textContent = JSON.stringify(profile, null, 2);
+      // 名前から苗字（最初のスペースまで）を抽出
+      currentLeaderLastName = selectedText.split(' ')[0].split(' ')[0];
 
-    } catch (e) {
-      status.textContent = '❌ エラーが発生しました';
-      
-      // getProfileがダメだった場合のバックアップ確認 (AccessToken)
-      let tokenInfo = '';
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('form-area').style.display = 'none';
+
       try {
-        const token = woff.getAccessToken();
-        tokenInfo = '\n\n【補足】woff.getAccessToken() は取得できました:\n' + token;
-      } catch (tErr) {
-        tokenInfo = '\n\n【補足】woff.getAccessToken() も失敗: ' + tErr.message;
+        const res = await fetch(`${GAS_API_URL}?userId=${encodeURIComponent(selectedId)}`);
+        const data = await res.json();
+
+        // 全エリアにメンバーのチェックボックスを展開
+        SECTION_IDS.forEach(id => renderMembers(id, data.members || []));
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('form-area').style.display = 'block';
+
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        alert('データの取得に失敗しました: ' + err.message);
+      }
+    }
+
+    function renderMembers(elementId, members) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = '';
+      if (!members || members.length === 0) return;
+
+      members.forEach((m, idx) => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.innerHTML = `<input type="checkbox" name="${elementId}" value="${m}"> ${m}`;
+        container.appendChild(label);
+      });
+    }
+
+    function getCheckedValues(elementId) {
+      const cbs = document.querySelectorAll(`#${elementId} input:checked`);
+      return Array.from(cbs).map(cb => cb.value);
+    }
+
+    async function sendReport() {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerText = '送信中...';
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const timeStr = `${mm}/${dd} ${hh}:${min}`;
+
+      // 各項目の選択値を取得
+      const getVal = (id) => getCheckedValues(id);
+
+      // --- フォーマットの組み立て（チェックがある項目のみ追加） ---
+      let msg = `お疲れ様です。\n${timeStr}時点での${currentLeaderLastName}チームの書類承認状況を連絡します。\n\n`;
+
+      // ■ 機能組織（Web部分）
+      const webTlApp = getVal('sec-web-tl-approved');
+      const webTlPen = getVal('sec-web-tl-pending');
+      if (webTlApp.length > 0 || webTlPen.length > 0) {
+        msg += `■機能組織（Web部分）\n`;
+        if (webTlApp.length > 0) msg += `・すべてTL承認済み\n  ${webTlApp.join('、')}\n\n`;
+        if (webTlPen.length > 0) msg += `・未提出・修正待ち\n  ${webTlPen.join('、')}\n\n`;
       }
 
-      result.textContent = 
-        'エラーメッセージ: ' + e.message + '\n\n' +
-        'スタックトレース:\n' + (e.stack || '') +
-        tokenInfo;
+      // ■ PJ組織（Web部分）
+      const pjPlApp = getVal('sec-pj-pl-approved');
+      const pjPlPen = getVal('sec-pj-pl-pending');
+      if (pjPlApp.length > 0 || pjPlPen.length > 0) {
+        msg += `■PJ組織（Web部分）\n`;
+        if (pjPlApp.length > 0) msg += `・PL承認済み\n  ${pjPlApp.join('、')}\n\n`;
+        if (pjPlPen.length > 0) msg += `・未提出・修正待ち\n  ${pjPlPen.join('、')}\n\n`;
+      }
+
+      // ■ 楽楽精算
+      const r1 = getVal('sec-rr-f-trans-approved');
+      const r2 = getVal('sec-rr-f-trans-pending');
+      const r3 = getVal('sec-rr-f-exp-approved');
+      const r4 = getVal('sec-rr-f-exp-pending');
+      const r5 = getVal('sec-rr-p-trans-approved');
+      const r6 = getVal('sec-rr-p-trans-pending');
+      const r7 = getVal('sec-rr-p-exp-approved');
+      const r8 = getVal('sec-rr-p-exp-pending');
+      const r9 = getVal('sec-rr-p-trans-reimb-approved');
+      const r10 = getVal('sec-rr-p-trans-reimb-pending');
+      const r11 = getVal('sec-rr-p-exp-reimb-approved');
+      const r12 = getVal('sec-rr-p-exp-reimb-pending');
+
+      const hasRaraku = [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12].some(arr => arr.length > 0);
+
+      if (hasRaraku) {
+        msg += `■楽楽精算\n`;
+        if (r1.length > 0) msg += `○機能組織交通費精算\n・TL承認済み\n  ${r1.join('、')}\n\n`;
+        if (r2.length > 0) msg += `○機能組織交通費精算\n・TL未承認\n  ${r2.join('、')}\n\n`;
+        if (r3.length > 0) msg += `○機能組織経費精算\n・TL承認済み\n  ${r3.join('、')}\n\n`;
+        if (r4.length > 0) msg += `○機能組織経費精算\n・TL未承認\n  ${r4.join('、')}\n\n`;
+        if (r5.length > 0) msg += `○PJ組織交通費精算\n・PL・TL承認済み\n  ${r5.join('、')}\n\n`;
+        if (r6.length > 0) msg += `○PJ組織交通費精算\n・PL承認待ち\n  ${r6.join('、')}\n\n`;
+        if (r7.length > 0) msg += `○PJ組織経費精算\n・PL・TL承認済み\n  ${r7.join('、')}\n\n`;
+        if (r8.length > 0) msg += `○PJ組織経費精算\n・PL承認待ち\n  ${r8.join('、')}\n\n`;
+        if (r9.length > 0) msg += `○PJ組織交通費精算（立替）\n・PL・TL承認済み\n  ${r9.join('、')}\n\n`;
+        if (r10.length > 0) msg += `○PJ組織交通費精算（立替）\n・PL承認待ち\n  ${r10.join('、')}\n\n`;
+        if (r11.length > 0) msg += `○PJ組織経費精算（立替）\n・PL・TL承認済み\n  ${r11.join('、')}\n\n`;
+        if (r12.length > 0) msg += `○PJ組織経費精算（立替）\n・PL承認待ち\n  ${r12.join('、')}\n\n`;
+      }
+
+      // ※ 特記事項
+      const noteText = document.getElementById('note-text').value.trim();
+      if (noteText) {
+        msg += `※特記事項\n${noteText}\n`;
+      }
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ message: msg })
+        });
+
+        const data = await res.json();
+        if (data.status === 'success') {
+          alert('報告メッセージを送信しました。画面を閉じてください。');
+          btn.innerText = '送信完了';
+          if (typeof woff !== 'undefined' && woff.closeWindow) woff.closeWindow();
+        } else {
+          throw new Error(data.message || '送信失敗');
+        }
+      } catch (err) {
+        alert('送信エラー: ' + err.message);
+        btn.disabled = false;
+        btn.innerText = '報告メッセージを送信';
+      }
     }
-  }
 
-  window.addEventListener('DOMContentLoaded', test);
-
+    window.addEventListener('DOMContentLoaded', main);
   </script>
 </body>
 </html>
